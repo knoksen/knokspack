@@ -1,0 +1,6 @@
+{
+  "name": "Knokspack AI Assistant",
+  "description": "A React-based web application called Knokspack, featuring an AI content generator powered by the Gemini API to demonstrate its capabilities in a modern UI.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
