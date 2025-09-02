@@ -1,19 +1,18 @@
-# Run and deploy your AI Studio app
+# WP Site Suite - Complete WordPress Toolkit
 
-This contains everything you need to run your app locally.
+The ultimate all-in-one toolkit to secure, optimize, and grow your WordPress website. A self-hosted alternative to Jetpack with no external service requirements.
 
-## Run Locally
+## 🚀 Version 2.0.0
 
-**Prerequisites:**  Node.js
+### What's New
+- New Design Module with custom blocks and visual customization
+- TailwindCSS integration for modern styling
+- Enhanced security features
+- Improved performance optimizations
+- React-based admin interface
+- Better AI integration
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
-
-=== WP Site Suite ===
+## 🎯 Key Features
 Contributors: knokspack_dev
 Donate link: https://knokspack.com/
 Tags: security, performance, backup, seo, social, design, payments, ai, stats, cdn, marketing, contact form, all-in-one, firewall, malware scan, optimization, jetpack
