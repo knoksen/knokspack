@@ -1,12 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { ContentType, Tone } from '../types';
 import { PLUGIN_GUIDELINES_CONTEXT } from '../constants';
 
-if (!process.env.API_KEY) {
-    throw new Error("API_KEY environment variable not set");
+if (!process.env.API_KEY || typeof process.env.API_KEY !== 'string' || process.env.API_KEY.trim() === '') {
+    throw new Error("API_KEY environment variable not set or invalid");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenerativeAI(process.env.API_KEY.trim());
 
 const PROMPT_TEMPLATES: Record<Exclude<ContentType, 'Plugin Guideline Q&A' | 'Plugin Readme Q&A' | 'Wireframe' | 'WP Readme File' | 'Image'>, string> = {
     'Blog Post': 'You are a professional blog writer. Your tone should be {TONE}. Write a high-quality, engaging, and well-structured blog post based on the following topic. Format the output in simple HTML tags like <p>, <h1>, <h2>, <ul>, and <li>. Do not include <html>, <head>, or <body> tags.',
@@ -50,27 +50,20 @@ const getReadmeContent = async (): Promise<string> => {
 
 export const generateImage = async (prompt: string): Promise<string> => {
     try {
-        const response = await ai.models.generateImages({
-            model: 'imagen-3.0-generate-002',
-            prompt: prompt,
-            config: {
-                numberOfImages: 1,
-                outputMimeType: 'image/jpeg',
-                aspectRatio: '1:1',
-            },
-        });
+        const model = ai.getGenerativeModel({ model: "gemini-pro-vision" });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
         
-        const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;
-        if (!base64ImageBytes) {
-             throw new Error("The API did not return an image. The prompt may have been blocked.");
+        if (!text) {
+            throw new Error("The API did not return an image. The prompt may have been blocked.");
         }
-        const imageUrl = `data:image/jpeg;base64,${base64ImageBytes}`;
-        return imageUrl;
-
+        
+        return text;
     } catch (error) {
         console.error("Error generating image from Gemini:", error);
-        if (error instanceof Error && error.message.includes('blocked')) {
-             throw new Error("Failed to generate image because the prompt was blocked for safety reasons. Please modify your prompt and try again.");
+        if (error instanceof Error && error.message.toLowerCase().includes('blocked')) {
+            throw new Error("Failed to generate image because the prompt was blocked for safety reasons. Please modify your prompt and try again.");
         }
         throw new Error("Failed to generate image. Please check your prompt and network connection.");
     }
@@ -78,41 +71,52 @@ export const generateImage = async (prompt: string): Promise<string> => {
 
 export const generateContentStream = async (prompt: string, contentType: ContentType, tone: Tone, useGoogleSearch: boolean) => {
     try {
-        const config: any = {
-            thinkingConfig: { thinkingBudget: 0 }
+        const config: {
+            temperature?: number;
+            topK?: number;
+            topP?: number;
+            maxOutputTokens?: number;
+            candidateCount?: number;
+            tools?: Array<{name: string}>
+        } = {
+            temperature: 0.7,
+            maxOutputTokens: 2048
         };
 
-        let systemInstruction: string | undefined;
-        let contents: string = prompt;
+        let prefix = '';
+        let contents = prompt;
 
         if (contentType === 'Plugin Guideline Q&A') {
-            systemInstruction = `You are an expert assistant for WordPress plugin developers. Your goal is to answer questions based on the provided WordPress Plugin Directory guidelines. Adhere strictly to the information given in the guidelines. If the answer isn't in the guidelines, say that you don't have enough information from the provided context. Format your answer using simple HTML tags like <p>, <ul>, and <li> where appropriate. The guidelines are:\n\n${PLUGIN_GUIDELINES_CONTEXT}`;
+            prefix = `You are an expert assistant for WordPress plugin developers. Your goal is to answer questions based on the provided WordPress Plugin Directory guidelines. Adhere strictly to the information given in the guidelines. If the answer isn't in the guidelines, say that you don't have enough information from the provided context. Format your answer using simple HTML tags like <p>, <ul>, and <li> where appropriate. The guidelines are:\n\n${PLUGIN_GUIDELINES_CONTEXT}\n\nQuestion: `;
         } else if (contentType === 'Plugin Readme Q&A') {
             const readme = await getReadmeContent();
-            systemInstruction = `You are an expert support assistant for the "WP Site Suite" WordPress plugin. Your goal is to answer questions based ONLY on the provided readme.txt file content. Be helpful and precise. If the answer is not in the provided content, state that the information is not available in the readme file. Do not invent information. Format your answer using simple HTML tags like <p>, <ul>, and <li> where appropriate. The readme.txt content is:\n\n${readme}`;
+            prefix = `You are an expert support assistant for the "WP Site Suite" WordPress plugin. Your goal is to answer questions based ONLY on the provided readme.txt file content. Be helpful and precise. If the answer is not in the provided content, state that the information is not available in the readme file. Do not invent information. Format your answer using simple HTML tags like <p>, <ul>, and <li> where appropriate. The readme.txt content is:\n\n${readme}\n\nQuestion: `;
         } else if (contentType === 'Wireframe') {
-             // For wireframe, the whole thing is the prompt, no system instruction
              contents = WIREFRAME_PROMPT_TEMPLATE.replace('{PROMPT}', prompt);
         } else if (contentType === 'WP Readme File') {
-            systemInstruction = WP_README_DESCRIPTION_TEMPLATE.replace('{PROMPT}', prompt);
-            contents = "Please generate the plugin description now based on the system instruction provided."; // Simple instruction to trigger the system prompt
+            prefix = WP_README_DESCRIPTION_TEMPLATE.replace('{PROMPT}', prompt) + '\n\n';
+            contents = "Please generate the plugin description now based on the provided instructions.";
         }
         else if (contentType !== 'Image') {
-            systemInstruction = (PROMPT_TEMPLATES[contentType] || PROMPT_TEMPLATES['Blog Post']).replace('{TONE}', tone);
+            prefix = (PROMPT_TEMPLATES[contentType] || PROMPT_TEMPLATES['Blog Post']).replace('{TONE}', tone) + '\n\n';
             if (useGoogleSearch) {
-                config.tools = [{ googleSearch: {} }];
+                config.tools = [{ name: 'google_search' }];
             }
         }
         
-        if (systemInstruction) {
-            config.systemInstruction = systemInstruction;
-        }
+        contents = prefix + contents;
         
-        const response = await ai.models.generateContentStream({
-            model: "gemini-2.5-flash",
-            contents: contents,
-            config: config
+        const model = ai.getGenerativeModel({ 
+            model: "gemini-pro",
+            generationConfig: {
+                temperature: config.temperature,
+                topK: config.topK,
+                topP: config.topP,
+                maxOutputTokens: config.maxOutputTokens,
+                candidateCount: config.candidateCount
+            }
         });
+        const response = await model.generateContentStream([contents]);
         return response;
     } catch (error) {
         console.error("Error generating content from Gemini:", error);

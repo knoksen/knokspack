@@ -5,7 +5,7 @@ import RadioGroup from '../RadioGroup';
 import type { ContentType, Tone, ReadmeData } from '../../types';
 import { CONTENT_TYPE_OPTIONS, TONE_OPTIONS, SUBSCRIPTION_LIMITS, AiIcon } from '../../constants';
 import ToggleSwitch from '../ToggleSwitch';
-import type { GenerateContentResponse } from '@google/genai';
+import type { GenerateContentResponse } from '@google/generative-ai';
 import { UserContext } from '../../contexts/UserContext';
 import { NavLink } from 'react-router-dom';
 import ReadmeForm from './ReadmeForm';
@@ -19,9 +19,9 @@ const LockIcon = () => (
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex items-center justify-center space-x-2">
-        <div className="w-2 h-2 rounded-full bg-white animate-bounce" style={{ animationDelay: '0s' }}></div>
-        <div className="w-2 h-2 rounded-full bg-white animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-        <div className="w-2 h-2 rounded-full bg-white animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+        <div className="w-2 h-2 rounded-full bg-white animate-bounce animation-delay-0"></div>
+        <div className="w-2 h-2 rounded-full bg-white animate-bounce animation-delay-200"></div>
+        <div className="w-2 h-2 rounded-full bg-white animate-bounce animation-delay-400"></div>
         <span className="text-white">Generating...</span>
     </div>
 );
@@ -171,13 +171,17 @@ ${changelog || '= 1.0.0 =\n* Initial release.'}
         setPrompt(example);
     }
 
-    const handleCopy = useCallback(() => {
+    const handleCopy = useCallback(async () => {
         if (!generatedContent) return;
         
         if (isReadmeGenerator) {
-            navigator.clipboard.writeText(generatedContent)
-                .then(() => setIsCopied(true))
-                .catch(err => console.error('Failed to copy text: ', err));
+            try {
+                await navigator.clipboard.writeText(generatedContent);
+                setIsCopied(true);
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                alert('Unable to copy to clipboard. Please try selecting and copying manually.');
+            }
             return;
         }
 
@@ -185,23 +189,33 @@ ${changelog || '= 1.0.0 =\n* Initial release.'}
         contentHolder.innerHTML = generatedContent;
         document.body.appendChild(contentHolder);
         
-        const selection = window.getSelection();
-        if(selection){
-            selection.removeAllRanges();
-            const range = document.createRange();
-            range.selectNode(contentHolder);
-            selection.addRange(range);
-        }
         try {
-            document.execCommand('copy');
+            const selection = window.getSelection();
+            if(selection){
+                selection.removeAllRanges();
+                const range = document.createRange();
+                range.selectNode(contentHolder);
+                selection.addRange(range);
+            }
+            
+            const copyResult = document.execCommand('copy');
+            if (!copyResult) {
+                throw new Error('execCommand copy failed');
+            }
             setIsCopied(true);
         } catch (err) {
-            console.error('Failed to copy: ', err);
-            navigator.clipboard.writeText(contentHolder.innerText); // Fallback to text
-            setIsCopied(true);
+            console.error('Failed to copy using execCommand: ', err);
+            try {
+                await navigator.clipboard.writeText(contentHolder.innerText);
+                setIsCopied(true);
+            } catch (clipboardErr) {
+                console.error('Failed to copy using Clipboard API: ', clipboardErr);
+                alert('Unable to copy to clipboard. Please try selecting and copying manually.');
+            }
+        } finally {
+            document.body.removeChild(contentHolder);
+            if(window.getSelection()) window.getSelection()?.removeAllRanges();
         }
-        document.body.removeChild(contentHolder);
-        if(window.getSelection()) window.getSelection()?.removeAllRanges();
     }, [generatedContent, isReadmeGenerator]);
 
     useEffect(() => {
