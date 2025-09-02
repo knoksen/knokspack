@@ -1,0 +1,120 @@
+# .github/dependabot.yml
+version: 2
+
+updates:
+  # ──────────────────────────────
+  # 1) Node / npm (root project)
+  # Duplicate this block for each package.json in subfolders (e.g. /apps/web).
+  - package-ecosystem: "npm"
+    directory: "/"                     # path containing package.json / lockfile
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:00"
+      timezone: "Europe/Oslo"
+    labels: ["dependencies", "automerge-candidate"]
+    assignees: ["knoksen"]             # change or remove
+    open-pull-requests-limit: 10
+    versioning-strategy: increase-if-necessary
+    # Keep noise down: group routine bumps, still break out security fixes
+    groups:
+      npm-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-dev-deps:
+        patterns: ["@types/*", "eslint*", "prettier*", "vitest", "jest*", "ts-jest", "webpack*", "vite*"]
+        update-types: ["minor", "patch"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    # Optional: avoid surprise majors; remove if you want majors automatically
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "deps(npm)"
+      include: "scope"
+
+  # ──────────────────────────────
+  # 2) Python (pip / requirements.txt or pip-compile)
+  - package-ecosystem: "pip"
+    directory: "/"                     # path with requirements*.txt / pip-tools
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:15"
+      timezone: "Europe/Oslo"
+    labels: ["dependencies", "python"]
+    assignees: ["knoksen"]
+    open-pull-requests-limit: 10
+    groups:
+      pip-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      pip-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "deps(pip)"
+      include: "scope"
+
+  # ──────────────────────────────
+  # 3) GitHub Actions (workflow action versions in .github/workflows)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:30"
+      timezone: "Europe/Oslo"
+    labels: ["dependencies", "ci"]
+    assignees: ["knoksen"]
+    groups:
+      gha-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      gha-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(actions)"
+      include: "scope"
+
+  # ──────────────────────────────
+  # 4) Docker (FROM images in Dockerfile)
+  - package-ecosystem: "docker"
+    directory: "/"                     # path containing Dockerfile
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "08:45"
+      timezone: "Europe/Oslo"
+    labels: ["dependencies", "docker"]
+    assignees: ["knoksen"]
+    groups:
+      docker-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      docker-security:
+        applies-to: security-updates
+        patterns: ["*"]
+    commit-message:
+      prefix: "deps(docker)"
+      include: "scope"
+
+  # ──────────────────────────────
+  # (Optional) Add more ecosystems as needed:
+  # - package-ecosystem: "terraform"   # for *.tf modules
+  # - package-ecosystem: "cargo"       # for Rust
+  # - package-ecosystem: "gomod"       # for Go modules
+  # - package-ecosystem: "maven"       # for Java
+  # Remember to set the correct `directory` per module/app.
+
+# Tips:
+# • For monorepos, duplicate the npm/pip/docker blocks with the right `directory`
+#   (e.g., "/apps/web", "/apps/api"). Wildcards are not supported for directory.
+# • Enable repository "Allow auto-merge" to auto-merge passing Dependabot PRs.
+# • Pair with CODEOWNERS so the right people auto-review dependency PRs.
