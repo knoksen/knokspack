@@ -32,12 +32,7 @@ class Knokspack_Stats {
         'retention_days' => 90
     );
 
-    /** @var string Base table name without prefix */
-    const TABLE_NAME = 'knokspack_stats';
-
-    /** @var string Database tables prefix */
-    private $table_prefix;
-    private $options;
+    /** @var string Database version */
     private $db_version = '1.0.0';
 
     public function __construct() {
@@ -75,8 +70,8 @@ class Knokspack_Stats {
         
         $charset_collate = $wpdb->get_charset_collate();
 
-        // Page Views table
-        $table_name = $wpdb->prefix . 'knokspack_page_views';
+        // Analytics table
+        $table_name = $wpdb->prefix . 'knokspack_analytics';
         $sql = "CREATE TABLE IF NOT EXISTS $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             page_id bigint(20),
@@ -97,7 +92,7 @@ class Knokspack_Stats {
         ) $charset_collate;";
 
         // Events table
-        $events_table = $wpdb->prefix . 'knokspack_events';
+        $events_table = $wpdb->prefix . 'knokspack_analytics_events';
         $sql .= "CREATE TABLE IF NOT EXISTS $events_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             event_type varchar(50) NOT NULL,
@@ -116,7 +111,7 @@ class Knokspack_Stats {
         ) $charset_collate;";
 
         // Daily Stats table
-        $daily_table = $wpdb->prefix . 'knokspack_daily_stats';
+        $daily_table = $wpdb->prefix . 'knokspack_analytics_daily';
         $sql .= "CREATE TABLE IF NOT EXISTS $daily_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             stat_date date NOT NULL,
@@ -150,15 +145,15 @@ class Knokspack_Stats {
 
         $date = date('Y-m-d H:i:s', strtotime("-$retention_days days"));
 
-        // Clean up old page views
+        // Clean up old analytics data
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->prefix}knokspack_page_views WHERE created_at < %s",
+            "DELETE FROM {$wpdb->prefix}knokspack_analytics WHERE created_at < %s",
             $date
         ));
 
         // Clean up old events
         $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$wpdb->prefix}knokspack_events WHERE created_at < %s",
+            "DELETE FROM {$wpdb->prefix}knokspack_analytics_events WHERE created_at < %s",
             $date
         ));
 
@@ -185,7 +180,7 @@ class Knokspack_Stats {
         );
 
         $wpdb->insert(
-            $wpdb->prefix . 'knokspack_page_views',
+            $wpdb->prefix . 'knokspack_analytics',
             $data,
             array('%d', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s')
         );
@@ -278,7 +273,7 @@ class Knokspack_Stats {
         );
 
         $result = $wpdb->insert(
-            $wpdb->prefix . 'knokspack_events',
+            $wpdb->prefix . 'knokspack_analytics_events',
             $data,
             array('%s', '%s', '%s', '%s', '%d', '%d', '%s')
         );
@@ -326,7 +321,7 @@ class Knokspack_Stats {
 
         switch ($type) {
             case 'page_views':
-                $table = $wpdb->prefix . 'knokspack_page_views';
+                $table = $wpdb->prefix . 'knokspack_analytics';
                 $query = $wpdb->prepare(
                     "SELECT DATE_FORMAT(created_at, %s) as label,
                             COUNT(*) as value
@@ -339,7 +334,7 @@ class Knokspack_Stats {
                 break;
 
             case 'visitors':
-                $table = $wpdb->prefix . 'knokspack_page_views';
+                $table = $wpdb->prefix . 'knokspack_analytics';
                 $query = $wpdb->prepare(
                     "SELECT DATE_FORMAT(created_at, %s) as label,
                             COUNT(DISTINCT visitor_id) as value
@@ -352,7 +347,7 @@ class Knokspack_Stats {
                 break;
 
             case 'devices':
-                $table = $wpdb->prefix . 'knokspack_page_views';
+                $table = $wpdb->prefix . 'knokspack_analytics';
                 $query = "SELECT device as label,
                                 COUNT(*) as value
                          FROM $table
@@ -362,7 +357,7 @@ class Knokspack_Stats {
                 break;
 
             case 'browsers':
-                $table = $wpdb->prefix . 'knokspack_page_views';
+                $table = $wpdb->prefix . 'knokspack_analytics';
                 $query = "SELECT browser as label,
                                 COUNT(*) as value
                          FROM $table

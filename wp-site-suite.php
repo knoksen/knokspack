@@ -18,155 +18,17 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define plugin version
-define('KNOKSPACK_VERSION', '2.0.0');
-
-/**
- * Main Knokspack Plugin Class
- */
-final class Knokspack_Plugin {
-    /**
-     * @var Knokspack_Plugin single instance of this class
-     */
-    private static $instance;
-
-    /**
-     * Main Instance
-     */
-    public static function instance() {
-        if (is_null(self::$instance)) {
-            self::$instance = new self();
-        }
-        return self::$instance;
-    }
-
-    /**
-     * Constructor.
-     */
-    public function __construct() {
-        $this->define_constants();
-        $this->includes();
-        $this->init_hooks();
-
-        do_action('knokspack_loaded');
-    }
-
-    /**
-     * Define Constants
-     */
-    private function define_constants() {
-        $this->define('KNOKSPACK_PLUGIN_FILE', __FILE__);
-        $this->define('KNOKSPACK_PLUGIN_BASENAME', plugin_basename(__FILE__));
-        $this->define('KNOKSPACK_PLUGIN_DIR', plugin_dir_path(__FILE__));
-        $this->define('KNOKSPACK_PLUGIN_URL', plugin_dir_url(__FILE__));
-        $this->define('KNOKSPACK_INCLUDES_DIR', KNOKSPACK_PLUGIN_DIR . 'includes/');
-        $this->define('KNOKSPACK_MODULES_DIR', KNOKSPACK_PLUGIN_DIR . 'modules/');
-        $this->define('KNOKSPACK_ASSETS_URL', KNOKSPACK_PLUGIN_URL . 'assets/');
-        $this->define('KNOKSPACK_DB_VERSION', '1.0.0');
-    }
-
-    /**
-     * Define constant if not already defined
-     */
-    private function define($name, $value) {
-        if (!defined($name)) {
-            define($name, $value);
-        }
-    }
-
-    /**
-     * Include required files
-     */
-    private function includes() {
-        // Core includes
-        require_once KNOKSPACK_INCLUDES_DIR . 'class-knokspack-autoloader.php';
-        require_once KNOKSPACK_INCLUDES_DIR . 'class-knokspack.php';
-
-        // Load modules
-        $modules = array(
-            'ads', 'ai', 'backup', 'cdn', 'crm', 'dashboard',
-            'embed', 'growth', 'mobile', 'promotion', 'scan',
-            'security', 'social', 'stats', 'video'
-        );
-
-        foreach ($modules as $module) {
-            $module_file = KNOKSPACK_MODULES_DIR . $module . '.php';
-            if (file_exists($module_file)) {
-                require_once $module_file;
-            }
-        }
-    }
-
-    /**
-     * Initialize hooks
-     */
-    private function init_hooks() {
-        register_activation_hook(__FILE__, array($this, 'activate'));
-        register_deactivation_hook(__FILE__, array($this, 'deactivate'));
-
-        add_action('plugins_loaded', array($this, 'init'));
-        add_action('init', array($this, 'load_textdomain'));
-    }
-
-    /**
-     * Initialize plugin
-     */
-    public function init() {
-        do_action('before_knokspack_init');
-
-        // Init main plugin class
-        knokspack();
-
-        do_action('knokspack_init');
-    }
-
-    /**
-     * Load translations
-     */
-    public function load_textdomain() {
-        load_plugin_textdomain(
-            'knokspack',
-            false,
-            dirname(plugin_basename(__FILE__)) . '/languages'
-        );
-    }
-
-    /**
-     * Activation hook
-     */
-    public function activate() {
-        knokspack()->activate();
-        flush_rewrite_rules();
-    }
-
-    /**
-     * Deactivation hook
-     */
-    public function deactivate() {
-        knokspack()->deactivate();
-        flush_rewrite_rules();
-    }
-}
-
-/**
- * Returns the main instance of Knokspack_Plugin
- */
-function knokspack_plugin() {
-    return Knokspack_Plugin::instance();
-}
-
-// Global for backwards compatibility
-$GLOBALS['knokspack'] = knokspack_plugin();
-}
+// Load required core files
+require_once(ABSPATH . 'wp-admin/includes/plugin.php');
 
 // Define plugin constants
 define('KNOKSPACK_VERSION', '2.0.0');
 define('KNOKSPACK_PATH', plugin_dir_path(__FILE__));
 define('KNOKSPACK_URL', plugin_dir_url(__FILE__));
 define('KNOKSPACK_BASENAME', plugin_basename(__FILE__));
-
-// Load required WordPress files
-require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+define('KNOKSPACK_MODULES_DIR', KNOKSPACK_PATH . 'modules/');
+define('KNOKSPACK_INCLUDES_DIR', KNOKSPACK_PATH . 'includes/');
+define('KNOKSPACK_ASSETS_URL', KNOKSPACK_URL . 'assets/');
 
 // Initialize the plugin
 function knokspack_init() {
@@ -181,15 +43,12 @@ function knokspack_init() {
     );
 
     foreach ($modules as $module) {
-        $module_file = KNOKSPACK_PATH . 'modules/' . $module . '.php';
+        $module_file = KNOKSPACK_MODULES_DIR . $module . '.php';
         if (file_exists($module_file)) {
             require_once $module_file;
         }
     }
 }
-
-// Initialize on plugins loaded
-add_action('plugins_loaded', 'knokspack_init');
 
 // Register activation hook
 register_activation_hook(__FILE__, 'knokspack_activate');
@@ -198,45 +57,10 @@ function knokspack_activate() {
     // Create necessary database tables
     global $wpdb;
     
-    // Create activity log table
-    $table_name = $wpdb->prefix . 'knokspack_activity_log';
-    $charset_collate = $wpdb->get_charset_collate();
-
-    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        user_id bigint(20) NOT NULL,
-        action varchar(255) NOT NULL,
-        object_type varchar(50) NOT NULL,
-        object_id bigint(20),
-        ip_address varchar(45),
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY  (id),
-        KEY user_id (user_id),
-        KEY action (action),
-        KEY created_at (created_at)
-    ) $charset_collate;";
-
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-
-    // Create backups table
-    $table_name = $wpdb->prefix . 'knokspack_backups';
-    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id bigint(20) NOT NULL AUTO_INCREMENT,
-        type varchar(50) NOT NULL,
-        file_path varchar(255) NOT NULL,
-        size bigint(20) NOT NULL,
-        created_at datetime DEFAULT CURRENT_TIMESTAMP,
-        status varchar(50) DEFAULT 'completed',
-        PRIMARY KEY  (id),
-        KEY type (type),
-        KEY status (status),
-        KEY created_at (created_at)
-    ) $charset_collate;";
-    dbDelta($sql);
-
     // Create analytics table
     $table_name = $wpdb->prefix . 'knokspack_analytics';
+    $charset_collate = $wpdb->get_charset_collate();
+    
     $sql = "CREATE TABLE IF NOT EXISTS $table_name (
         id bigint(20) NOT NULL AUTO_INCREMENT,
         page_id bigint(20),
@@ -252,27 +76,19 @@ function knokspack_activate() {
         KEY visitor_id (visitor_id),
         KEY created_at (created_at)
     ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
     dbDelta($sql);
+
+    // Create necessary directories
+    wp_mkdir_p(WP_CONTENT_DIR . '/uploads/knokspack');
 
     // Set default options
     $default_options = array(
-        'security' => array(
-            'firewall_enabled' => true,
-            'brute_force_protection' => true,
-            'activity_log_enabled' => true,
-            'scan_frequency' => 'daily'
-        ),
-        'performance' => array(
-            'cache_enabled' => true,
-            'minify_css' => true,
-            'minify_js' => true,
-            'lazy_load' => true
-        ),
-        'backup' => array(
-            'frequency' => 'daily',
-            'retention_days' => 30,
-            'include_files' => true,
-            'include_database' => true
+        'analytics' => array(
+            'tracking_enabled' => true,
+            'exclude_admins' => true,
+            'anonymize_ips' => true
         )
     );
 
@@ -282,39 +98,13 @@ function knokspack_activate() {
         }
     }
 
-    // Create cache directory
-    $cache_dir = WP_CONTENT_DIR . '/cache/knokspack';
-    if (!file_exists($cache_dir)) {
-        wp_mkdir_p($cache_dir);
-    }
-
-    // Create backup directory
-    $backup_dir = WP_CONTENT_DIR . '/backups/knokspack';
-    if (!file_exists($backup_dir)) {
-        wp_mkdir_p($backup_dir);
-    }
-
-    // Clear any existing cache
-    if (function_exists('wp_cache_flush')) {
-        wp_cache_flush();
-    }
-
     // Flush rewrite rules
     flush_rewrite_rules();
 }
 
-function knokspack_enqueue_scripts() {
-    if (!knokspack_should_load_assets()) return;
-
-    $manifest_path = KNOKSPACK_PATH . 'dist/.vite/manifest.json';
-    if (!file_exists($manifest_path)) {
-        error_log('Knokspack: manifest.json not found at ' . $manifest_path);
-        return;
-    }
-
-    $manifest = json_decode(file_get_contents($manifest_path), true);
-    if (!is_array($manifest)) {
-        error_log('Knokspack: Invalid manifest.json');
+function knokspack_enqueue_scripts($hook) {
+    // Only load on our plugin pages
+    if (strpos($hook, 'knokspack') === false) {
         return;
     }
 
@@ -322,67 +112,33 @@ function knokspack_enqueue_scripts() {
     wp_enqueue_style(
         'knokspack-fonts',
         'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
-        [],
+        array(),
         KNOKSPACK_VERSION
     );
 
-    // Enqueue CSS if exists
-    foreach ($manifest as $key => $entry) {
-        if (isset($entry['css']) && is_array($entry['css'])) {
-            foreach ($entry['css'] as $css_file) {
-                wp_enqueue_style(
-                    'knokspack-' . md5($css_file),
-                    KNOKSPACK_URL . $css_file,
-                    [],
-                    KNOKSPACK_VERSION
-                );
-            }
-        }
-    }
+    // Analytics styles
+    wp_enqueue_style(
+        'knokspack-analytics',
+        KNOKSPACK_ASSETS_URL . 'css/analytics.css',
+        array(),
+        KNOKSPACK_VERSION
+    );
 
-    // Enqueue vendor chunk first
-    foreach ($manifest as $key => $entry) {
-        if (strpos($key, 'vendor') !== false && isset($entry['file'])) {
-            wp_enqueue_script(
-                'knokspack-vendor',
-                KNOKSPACK_URL . $entry['file'],
-                [],
-                KNOKSPACK_VERSION,
-                true
-            );
-            break;
-        }
-    }
+    // React app scripts
+    wp_enqueue_script(
+        'knokspack-app',
+        KNOKSPACK_URL . 'dist/index.js',
+        array(),
+        KNOKSPACK_VERSION,
+        true
+    );
 
-    // Then enqueue main chunk
-    foreach ($manifest as $key => $entry) {
-        if (strpos($key, 'index') !== false && isset($entry['file'])) {
-            wp_enqueue_script(
-                'knokspack-main',
-                KNOKSPACK_URL . $entry['file'],
-                ['knokspack-vendor'],
-                KNOKSPACK_VERSION,
-                true
-            );
-            break;
-        }
-    }
-
-    wp_localize_script('knokspack-main', 'knokspackData', [
+    // Localize script
+    wp_localize_script('knokspack-app', 'knokspackData', array(
         'ajaxUrl' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('knokspack-nonce'),
-        'pluginUrl' => KNOKSPACK_URL,
-    ]);
-}
-
-function knokspack_should_load_assets() {
-    $screen = get_current_screen();
-    if (!$screen) return false;
-
-    return (
-        strpos($screen->id, 'knokspack') !== false ||
-        strpos($screen->id, 'toplevel_page_knokspack') !== false
-    );
+        'pluginUrl' => KNOKSPACK_URL
+    ));
 }
 
 function knokspack_admin_menu() {
@@ -395,11 +151,22 @@ function knokspack_admin_menu() {
         'dashicons-admin-generic',
         30
     );
+
+    add_submenu_page(
+        'knokspack',
+        'Analytics',
+        'Analytics',
+        'manage_options',
+        'knokspack-analytics',
+        'knokspack_render_admin_page'
+    );
 }
 
 function knokspack_render_admin_page() {
     echo '<div class="wrap"><div id="knokspack-root"></div></div>';
 }
 
+// Initialize plugin
+add_action('plugins_loaded', 'knokspack_init');
 add_action('admin_menu', 'knokspack_admin_menu');
 add_action('admin_enqueue_scripts', 'knokspack_enqueue_scripts');
