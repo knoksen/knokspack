@@ -1,8 +1,11 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Blocks {
+class Knokspack_Blocks {
     public function __construct() {
+        if (!function_exists('add_action')) {
+            return;
+        }
         add_action('init', [$this, 'register_blocks']);
     }
 
@@ -10,8 +13,8 @@ class WPSS_Blocks {
         if (!function_exists('register_block_type')) return;
 
         // Register AI Content Helper block
-        register_block_type('wpss/ai-content-helper', array(
-            'editor_script' => 'wpss-ai-content-helper',
+        register_block_type('knokspack/ai-content-helper', array(
+            'editor_script' => 'knokspack-ai-content-helper',
             'attributes' => array(
                 'content' => array('type' => 'string'),
                 'prompt' => array('type' => 'string'),
@@ -22,14 +25,14 @@ class WPSS_Blocks {
         ));
 
         wp_register_script(
-            'wpss-ai-content-helper',
-            plugins_url('js/blocks/ai-content-helper.js', dirname(__FILE__)),
+            'knokspack-ai-content-helper',
+            plugins_url('assets/js/blocks/ai-content-helper.js', dirname(__FILE__)),
             array('wp-blocks', 'wp-element', 'wp-editor', 'wp-components')
         );
 
         // Register Social Share block
-        register_block_type('wpss/social-share', array(
-            'editor_script' => 'wpss-social-share',
+        register_block_type('knokspack/social-share', array(
+            'editor_script' => 'knokspack-social-share',
             'attributes' => array(
                 'platforms' => array('type' => 'array'),
                 'style' => array('type' => 'string'),
@@ -39,14 +42,14 @@ class WPSS_Blocks {
         ));
 
         wp_register_script(
-            'wpss-social-share',
-            plugins_url('js/blocks/social-share.js', dirname(__FILE__)),
+            'knokspack-social-share',
+            plugins_url('assets/js/blocks/social-share.js', dirname(__FILE__)),
             array('wp-blocks', 'wp-element', 'wp-editor', 'wp-components')
         );
 
         // Register Newsletter Signup block
-        register_block_type('wpss/newsletter-signup', array(
-            'editor_script' => 'wpss-newsletter-signup',
+        register_block_type('knokspack/newsletter-signup', array(
+            'editor_script' => 'knokspack-newsletter-signup',
             'attributes' => array(
                 'title' => array('type' => 'string'),
                 'description' => array('type' => 'string'),
@@ -57,8 +60,8 @@ class WPSS_Blocks {
         ));
 
         wp_register_script(
-            'wpss-newsletter-signup',
-            plugins_url('js/blocks/newsletter-signup.js', dirname(__FILE__)),
+            'knokspack-newsletter-signup',
+            plugins_url('assets/js/blocks/newsletter-signup.js', dirname(__FILE__)),
             array('wp-blocks', 'wp-element', 'wp-editor', 'wp-components')
         );
     }
@@ -66,17 +69,17 @@ class WPSS_Blocks {
     public function render_ai_content_helper($attributes) {
         if (empty($attributes['content'])) return '';
         return sprintf(
-            '<div class="wpss-ai-content">%s</div>',
+            '<div class="knokspack-ai-content">%s</div>',
             wp_kses_post($attributes['content'])
         );
     }
 
     public function render_social_share($attributes) {
         $platforms = $attributes['platforms'] ?? array('facebook', 'twitter', 'linkedin');
-        $output = '<div class="wpss-social-share">';
+        $output = '<div class="knokspack-social-share">';
         foreach ($platforms as $platform) {
             $output .= sprintf(
-                '<a href="#" class="wpss-share-%s" data-platform="%s">Share on %s</a>',
+                '<a href="#" class="knokspack-share-%s" data-platform="%s">Share on %s</a>',
                 esc_attr($platform),
                 esc_attr($platform),
                 esc_html(ucfirst($platform))
@@ -92,10 +95,10 @@ class WPSS_Blocks {
         $buttonText = $attributes['buttonText'] ?? 'Subscribe';
         
         return sprintf(
-            '<div class="wpss-newsletter-signup">
+            '<div class="knokspack-newsletter-signup">
                 <h3>%s</h3>
                 <p>%s</p>
-                <form class="wpss-newsletter-form" method="post">
+                <form class="knokspack-newsletter-form" method="post">
                     <input type="email" name="email" placeholder="Enter your email" required>
                     <button type="submit">%s</button>
                     %s
@@ -104,9 +107,9 @@ class WPSS_Blocks {
             esc_html($title),
             esc_html($description),
             esc_html($buttonText),
-            wp_nonce_field('wpss_newsletter_signup', '_wpnonce', true, false)
+            wp_nonce_field('knokspack_newsletter_signup', '_wpnonce', true, false)
         );
     }
 }
 
-new WPSS_Blocks();
+new Knokspack_Blocks();

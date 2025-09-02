@@ -1,6 +1,6 @@
 jQuery(document).ready(function($) {
     // Design Settings Page
-    if ($('#wpss-design-form').length) {
+    if ($('#knokspack-design-form').length) {
         // Initialize CodeMirror for CSS editor if available
         if (typeof CodeMirror !== 'undefined' && $('#custom_css').length) {
             var cssEditor = CodeMirror.fromTextArea(document.getElementById('custom_css'), {
@@ -45,7 +45,7 @@ jQuery(document).ready(function($) {
         });
 
         // Form submission
-        $('#wpss-design-form').on('submit', function(e) {
+        $('#knokspack-design-form').on('submit', function(e) {
             e.preventDefault();
 
             // Update CodeMirror content if editors exist

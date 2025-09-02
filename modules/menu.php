@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Menu {
+class Knokspack_Menu {
     private $pages = array();
 
     public function __construct() {
@@ -178,4 +178,4 @@ class WPSS_Menu {
 }
 
 // Initialize the menu
-new WPSS_Menu();
+new Knokspack_Menu();

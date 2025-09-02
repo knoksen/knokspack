@@ -101,7 +101,7 @@ class Knokspack_Design {
         $style = isset($attributes['style']) ? $this->parse_style_attribute($attributes['style']) : '';
 
         return sprintf(
-            '<h%1$d class="wpss-heading" style="text-align: %2$s; %3$s">%4$s</h%1$d>',
+            '<h%1$d class="knokspack-heading" style="text-align: %2$s; %3$s">%4$s</h%1$d>',
             $level,
             esc_attr($alignment),
             esc_attr($style),
@@ -115,7 +115,7 @@ class Knokspack_Design {
         $style = $this->get_container_style($attributes);
 
         return sprintf(
-            '<div class="wpss-container wpss-container-%s" style="%s">%s</div>',
+            '<div class="knokspack-container knokspack-container-%s" style="%s">%s</div>',
             esc_attr($width),
             esc_attr($style),
             wp_kses_post($content)

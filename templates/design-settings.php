@@ -2,7 +2,7 @@
 if (!defined('ABSPATH')) exit;
 
 // Get current settings
-$options = get_option('wpss_design_settings', array(
+$options = get_option('knokspack_design_settings', array(
     'enable_blocks' => true,
     'enable_templates' => true,
     'custom_css' => '',
@@ -14,11 +14,11 @@ $options = get_option('wpss_design_settings', array(
 <div class="wrap">
     <h1><?php echo esc_html__('Design Settings', 'knokspack'); ?></h1>
 
-    <div id="wpss-design-settings" class="wpss-settings-container">
-        <form id="wpss-design-form" method="post">
-            <?php wp_nonce_field('wpss_design_nonce'); ?>
+    <div id="knokspack-design-settings" class="knokspack-settings-container">
+        <form id="knokspack-design-form" method="post">
+            <?php wp_nonce_field('knokspack_design_nonce'); ?>
 
-            <div class="wpss-settings-section">
+            <div class="knokspack-settings-section">
                 <h2><?php echo esc_html__('Block Editor Settings', 'knokspack'); ?></h2>
                 <table class="form-table">
                     <tr>
@@ -84,9 +84,9 @@ $options = get_option('wpss_design_settings', array(
 
             <div class="wpss-settings-section">
                 <h2><?php echo esc_html__('Custom Fonts', 'knokspack'); ?></h2>
-                <div id="wpss-fonts-container">
+                <div id="knokspack-fonts-container">
                     <?php foreach ($options['custom_fonts'] as $index => $font): ?>
-                        <div class="wpss-font-entry">
+                        <div class="knokspack-font-entry">
                             <input type="text" name="font_names[]" value="<?php echo esc_attr($font['name']); ?>" 
                                    placeholder="<?php echo esc_attr__('Font Name', 'knokspack'); ?>">
                             <input type="url" name="font_urls[]" value="<?php echo esc_url($font['url']); ?>" 
@@ -115,26 +115,26 @@ jQuery(document).ready(function($) {
     // Add new font entry
     $('#add-font').on('click', function() {
         var template = `
-            <div class="wpss-font-entry">
+            <div class="knokspack-font-entry">
                 <input type="text" name="font_names[]" placeholder="<?php echo esc_attr__('Font Name', 'knokspack'); ?>">
                 <input type="url" name="font_urls[]" placeholder="<?php echo esc_attr__('Font URL', 'knokspack'); ?>">
                 <button type="button" class="button remove-font"><?php echo esc_js(__('Remove', 'knokspack')); ?></button>
             </div>
         `;
-        $('#wpss-fonts-container').append(template);
+        $('#knokspack-fonts-container').append(template);
     });
 
     // Remove font entry
     $(document).on('click', '.remove-font', function() {
-        $(this).closest('.wpss-font-entry').remove();
+        $(this).closest('.knokspack-font-entry').remove();
     });
 
     // Form submission
-    $('#wpss-design-form').on('submit', function(e) {
+    $('#knokspack-design-form').on('submit', function(e) {
         e.preventDefault();
 
         var fonts = [];
-        $('.wpss-font-entry').each(function() {
+        $('.knokspack-font-entry').each(function() {
             var name = $(this).find('input[name="font_names[]"]').val();
             var url = $(this).find('input[name="font_urls[]"]').val();
             if (name && url) {
@@ -143,7 +143,7 @@ jQuery(document).ready(function($) {
         });
 
         var data = {
-            action: 'wpss_save_design',
+            action: 'knokspack_save_design',
             _ajax_nonce: $('#_wpnonce').val(),
             enable_blocks: $('input[name="enable_blocks"]').is(':checked') ? 1 : 0,
             enable_templates: $('input[name="enable_templates"]').is(':checked') ? 1 : 0,
@@ -163,12 +163,12 @@ jQuery(document).ready(function($) {
 });</script>
 
 <style>
-.wpss-settings-container {
+.knokspack-settings-container {
     max-width: 1200px;
     margin: 20px 0;
 }
 
-.wpss-settings-section {
+.knokspack-settings-section {
     background: #fff;
     padding: 20px;
     margin-bottom: 20px;
@@ -176,20 +176,20 @@ jQuery(document).ready(function($) {
     border-radius: 4px;
 }
 
-.wpss-settings-section h2 {
+.knokspack-settings-section h2 {
     margin-top: 0;
     padding-bottom: 10px;
     border-bottom: 1px solid #eee;
 }
 
-.wpss-font-entry {
+.knokspack-font-entry {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
     align-items: center;
 }
 
-.wpss-font-entry input {
+.knokspack-font-entry input {
     flex: 1;
 }
 

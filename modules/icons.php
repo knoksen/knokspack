@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Icons {
+class Knokspack_Icons {
     public function __construct() {
         add_action('admin_menu', [$this, 'register_menu_icons']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_icon_styles']);
@@ -31,8 +31,8 @@ class WPSS_Icons {
                 $title,
                 $title,
                 'manage_options',
-                'wpss_' . $key,
-                'wpss_render_' . $key . '_page',
+                'knokspack_' . $key,
+                'knokspack_render_' . $key . '_page',
                 $icon
             );
         }
@@ -40,8 +40,8 @@ class WPSS_Icons {
 
     public function enqueue_icon_styles() {
         wp_enqueue_style('dashicons');
-        wp_enqueue_style('wpss-icons', plugins_url('css/wpss-icons.css', __FILE__));
+        wp_enqueue_style('knokspack-icons', plugins_url('assets/css/knokspack-icons.css', __FILE__));
     }
 }
 
-new WPSS_Icons();
+new Knokspack_Icons();

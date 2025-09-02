@@ -1,11 +1,11 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Performance {
+class Knokspack_Performance {
     private $options;
 
     public function __construct() {
-        $this->options = get_option('wpss_performance_settings', [
+        $this->options = get_option('knokspack_performance_settings', [
             'enable_cache' => true,
             'enable_cdn' => false,
             'enable_lazy_load' => true,
@@ -66,7 +66,7 @@ class WPSS_Performance {
 
     private function get_cache_file_path() {
         $url_path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-        $cache_path = WP_CONTENT_DIR . '/cache/wpss';
+        $cache_path = WP_CONTENT_DIR . '/cache/knokspack';
         if (!is_dir($cache_path)) {
             wp_mkdir_p($cache_path);
         }
@@ -107,11 +107,11 @@ class WPSS_Performance {
     }
 
     public function clear_cache() {
-        $cache_path = WP_CONTENT_DIR . '/cache/wpss';
+        $cache_path = WP_CONTENT_DIR . '/cache/knokspack';
         if (is_dir($cache_path)) {
             array_map('unlink', glob("$cache_path/*"));
         }
     }
 }
 
-new WPSS_Performance();
+new Knokspack_Performance();

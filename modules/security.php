@@ -1,12 +1,12 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Security {
+class Knokspack_Security {
     private $options;
     private $blocked_ips = array();
 
     public function __construct() {
-        $this->options = get_option('wpss_security_settings', array(
+        $this->options = get_option('knokspack_security_settings', array(
             'firewall_enabled' => true,
             'brute_force_protection' => true,
             'max_login_attempts' => 5,
@@ -16,7 +16,7 @@ class WPSS_Security {
             'email_notifications' => true
         ));
 
-        $this->blocked_ips = get_option('wpss_blocked_ips', array());
+        $this->blocked_ips = get_option('knokspack_blocked_ips', array());
 
         // Initialize security features
         add_action('init', array($this, 'init_security'));
@@ -25,8 +25,8 @@ class WPSS_Security {
         add_action('admin_init', array($this, 'schedule_scans'));
         
         // Add AJAX handlers
-        add_action('wp_ajax_wpss_run_security_scan', array($this, 'ajax_run_security_scan'));
-        add_action('wp_ajax_wpss_unblock_ip', array($this, 'ajax_unblock_ip'));
+        add_action('wp_ajax_knokspack_run_security_scan', array($this, 'ajax_run_security_scan'));
+        add_action('wp_ajax_knokspack_unblock_ip', array($this, 'ajax_unblock_ip'));
     }
 
     public function init_security() {
@@ -74,7 +74,7 @@ class WPSS_Security {
                 );
             } else {
                 unset($this->blocked_ips[$ip]);
-                update_option('wpss_blocked_ips', $this->blocked_ips);
+                update_option('knokspack_blocked_ips', $this->blocked_ips);
             }
         }
     }
@@ -116,8 +116,8 @@ class WPSS_Security {
     }
 
     public function schedule_scans() {
-        if (!wp_next_scheduled('wpss_security_scan')) {
-            wp_schedule_event(time(), $this->options['scan_frequency'], 'wpss_security_scan');
+        if (!wp_next_scheduled('knokspack_security_scan')) {
+            wp_schedule_event(time(), $this->options['scan_frequency'], 'knokspack_security_scan');
         }
     }
 
@@ -133,8 +133,8 @@ class WPSS_Security {
             $this->scan_directory($path, $results);
         }
 
-        update_option('wpss_last_scan_results', $results);
-        update_option('wpss_last_scan_time', time());
+        update_option('knokspack_last_scan_results', $results);
+        update_option('knokspack_last_scan_time', time());
 
         if (!empty($results['malware']) || !empty($results['vulnerabilities'])) {
             $this->send_scan_notification($results);
@@ -180,7 +180,7 @@ class WPSS_Security {
         }
 
         // Check for file changes (if we have a hash record)
-        $file_hashes = get_option('wpss_file_hashes', array());
+        $file_hashes = get_option('knokspack_file_hashes', array());
         $current_hash = md5_file($file);
         
         if (isset($file_hashes[$file->getPathname()]) && 
@@ -189,7 +189,7 @@ class WPSS_Security {
         }
 
         $file_hashes[$file->getPathname()] = $current_hash;
-        update_option('wpss_file_hashes', $file_hashes);
+        update_option('knokspack_file_hashes', $file_hashes);
     }
 
     private function send_scan_notification($results) {
@@ -255,7 +255,7 @@ class WPSS_Security {
     }
 
     public function ajax_run_security_scan() {
-        check_ajax_referer('wpss_security_nonce');
+        check_ajax_referer('knokspack_security_nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Insufficient permissions');
         }
@@ -264,7 +264,7 @@ class WPSS_Security {
     }
 
     public function ajax_unblock_ip() {
-        check_ajax_referer('wpss_security_nonce');
+        check_ajax_referer('knokspack_security_nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Insufficient permissions');
         }
@@ -281,4 +281,4 @@ class WPSS_Security {
 }
 
 // Initialize the security module
-new WPSS_Security();
+new Knokspack_Security();

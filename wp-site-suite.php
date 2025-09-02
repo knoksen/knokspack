@@ -9,10 +9,48 @@
  * Requires PHP: 7.4
  * Text Domain: knokspack
  * Domain Path: /languages
+ *
+ * @package Knokspack
  */
 
 // Prevent direct file access
-if (!defined('ABSPATH')) exit;
+defined('ABSPATH') || exit;
+
+// Early define plugin constants
+if (!class_exists('Knokspack')) {
+    // Define version constant
+    if (!defined('KNOKSPACK_VERSION')) {
+        define('KNOKSPACK_VERSION', '2.0.0');
+    }
+
+    // Define file constant
+    if (!defined('KNOKSPACK_PLUGIN_FILE')) {
+        define('KNOKSPACK_PLUGIN_FILE', __FILE__);
+    }
+    
+    // Load core WordPress files
+    if (!defined('WPINC')) {
+        define('WPINC', 'wp-includes');
+    }
+
+    require_once dirname(dirname(dirname(__FILE__))) . '/wp-load.php';
+
+    // Other plugin constants
+    if (!defined('KNOKSPACK_PLUGIN_BASENAME')) {
+        define('KNOKSPACK_PLUGIN_BASENAME', plugin_basename(__FILE__));
+    }
+
+    if (!defined('KNOKSPACK_PLUGIN_DIR')) {
+        define('KNOKSPACK_PLUGIN_DIR', plugin_dir_path(__FILE__));
+    }
+
+    if (!defined('KNOKSPACK_PLUGIN_URL')) {
+        define('KNOKSPACK_PLUGIN_URL', plugin_dir_url(__FILE__));
+    }
+
+    if (!defined('KNOKSPACK_INCLUDES_DIR')) {
+        define('KNOKSPACK_INCLUDES_DIR', KNOKSPACK_PLUGIN_DIR . 'includes/');
+}
 
 // Define plugin constants
 define('KNOKSPACK_VERSION', '2.0.0');

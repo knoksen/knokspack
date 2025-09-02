@@ -1,11 +1,11 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Marketing {
+class Knokspack_Marketing {
     private $options;
 
     public function __construct() {
-        $this->options = get_option('wpss_marketing_settings', array(
+        $this->options = get_option('knokspack_marketing_settings', array(
             'newsletter_enabled' => true,
             'social_auto_post' => false,
             'seo_meta_enabled' => true,
@@ -17,8 +17,8 @@ class WPSS_Marketing {
         add_action('init', array($this, 'init_marketing'));
         add_action('wp_head', array($this, 'add_seo_meta'));
         add_action('publish_post', array($this, 'handle_post_publish'));
-        add_action('wp_ajax_wpss_subscribe_newsletter', array($this, 'ajax_subscribe_newsletter'));
-        add_action('wp_ajax_nopriv_wpss_subscribe_newsletter', array($this, 'ajax_subscribe_newsletter'));
+        add_action('wp_ajax_knokspack_subscribe_newsletter', array($this, 'ajax_subscribe_newsletter'));
+        add_action('wp_ajax_nopriv_knokspack_subscribe_newsletter', array($this, 'ajax_subscribe_newsletter'));
     }
 
     public function init_marketing() {
@@ -28,7 +28,7 @@ class WPSS_Marketing {
         }
 
         // Add newsletter shortcode
-        add_shortcode('wpss_newsletter', array($this, 'newsletter_shortcode'));
+        add_shortcode('knokspack_newsletter', array($this, 'newsletter_shortcode'));
     }
 
     public function newsletter_shortcode($atts) {
@@ -39,10 +39,10 @@ class WPSS_Marketing {
         ), $atts);
 
         return sprintf(
-            '<div class="wpss-newsletter">
+            '<div class="knokspack-newsletter">
                 <h3>%s</h3>
                 <p>%s</p>
-                <form class="wpss-newsletter-form" method="post">
+                <form class="knokspack-newsletter-form" method="post">
                     <input type="email" name="email" placeholder="Enter your email" required>
                     <button type="submit">%s</button>
                     %s
@@ -51,7 +51,7 @@ class WPSS_Marketing {
             esc_html($atts['title']),
             esc_html($atts['description']),
             esc_html($atts['button_text']),
-            wp_nonce_field('wpss_newsletter', '_wpnonce', true, false)
+            wp_nonce_field('knokspack_newsletter', '_wpnonce', true, false)
         );
     }
 
@@ -144,26 +144,26 @@ class WPSS_Marketing {
         $excerpt = wp_trim_words($post->post_content, 20);
 
         // Facebook posting
-        $fb_token = get_option('wpss_facebook_token');
+        $fb_token = get_option('knokspack_facebook_token');
         if ($fb_token) {
             $this->post_to_facebook($title, $url, $excerpt, $fb_token);
         }
 
         // Twitter posting
-        $twitter_keys = get_option('wpss_twitter_keys');
+        $twitter_keys = get_option('knokspack_twitter_keys');
         if ($twitter_keys) {
             $this->post_to_twitter($title, $url, $twitter_keys);
         }
 
         // LinkedIn posting
-        $linkedin_token = get_option('wpss_linkedin_token');
+        $linkedin_token = get_option('knokspack_linkedin_token');
         if ($linkedin_token) {
             $this->post_to_linkedin($title, $url, $excerpt, $linkedin_token);
         }
     }
 
     private function post_to_facebook($title, $url, $excerpt, $token) {
-        $page_id = get_option('wpss_facebook_page_id');
+        $page_id = get_option('knokspack_facebook_page_id');
         $endpoint = "https://graph.facebook.com/{$page_id}/feed";
         
         wp_remote_post($endpoint, array(
@@ -203,14 +203,14 @@ class WPSS_Marketing {
                         'visibleToGuest' => true
                     )
                 ),
-                'owner' => 'urn:li:organization:' . get_option('wpss_linkedin_company_id'),
+                'owner' => 'urn:li:organization:' . get_option('knokspack_linkedin_company_id'),
                 'text' => array('text' => $excerpt)
             ))
         ));
     }
 
     public function ajax_subscribe_newsletter() {
-        check_ajax_referer('wpss_newsletter');
+        check_ajax_referer('knokspack_newsletter');
 
         $email = sanitize_email($_POST['email']);
         if (!is_email($email)) {
@@ -218,7 +218,7 @@ class WPSS_Marketing {
         }
 
         global $wpdb;
-        $table_name = $wpdb->prefix . 'wpss_subscribers';
+        $table_name = $wpdb->prefix . 'knokspack_subscribers';
 
         // Check if already subscribed
         $exists = $wpdb->get_var($wpdb->prepare(
@@ -252,9 +252,9 @@ class WPSS_Marketing {
     private function send_confirmation_email($email) {
         $subject = sprintf('%s - Please Confirm Your Subscription', get_bloginfo('name'));
         
-        $token = wp_create_nonce('wpss_confirm_' . $email);
+        $token = wp_create_nonce('knokspack_confirm_' . $email);
         $confirm_url = add_query_arg(array(
-            'wpss_action' => 'confirm_subscription',
+            'knokspack_action' => 'confirm_subscription',
             'email' => urlencode($email),
             'token' => $token
         ), home_url('/'));
@@ -275,4 +275,4 @@ class WPSS_Marketing {
 }
 
 // Initialize the marketing module
-new WPSS_Marketing();
+new Knokspack_Marketing();

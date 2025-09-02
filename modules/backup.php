@@ -1,11 +1,11 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Backup {
+class Knokspack_Backup {
     private $options;
 
     public function __construct() {
-        $this->options = get_option('wpss_backup_settings', array(
+        $this->options = get_option('knokspack_backup_settings', array(
             'backup_path' => WP_CONTENT_DIR . '/backups/knokspack',
             'frequency' => 'daily',
             'retention_days' => 30,
@@ -18,16 +18,16 @@ class WPSS_Backup {
 
         // Initialize backup system
         add_action('init', array($this, 'init_backup'));
-        add_action('wp_ajax_wpss_create_backup', array($this, 'ajax_create_backup'));
-        add_action('wp_ajax_wpss_restore_backup', array($this, 'ajax_restore_backup'));
-        add_action('wp_ajax_wpss_delete_backup', array($this, 'ajax_delete_backup'));
+        add_action('wp_ajax_knokspack_create_backup', array($this, 'ajax_create_backup'));
+        add_action('wp_ajax_knokspack_restore_backup', array($this, 'ajax_restore_backup'));
+        add_action('wp_ajax_knokspack_delete_backup', array($this, 'ajax_delete_backup'));
     }
 
     public function init_backup() {
-        if (!wp_next_scheduled('wpss_scheduled_backup')) {
-            wp_schedule_event(time(), $this->options['frequency'], 'wpss_scheduled_backup');
+        if (!wp_next_scheduled('knokspack_scheduled_backup')) {
+            wp_schedule_event(time(), $this->options['frequency'], 'knokspack_scheduled_backup');
         }
-        add_action('wpss_scheduled_backup', array($this, 'create_scheduled_backup'));
+        add_action('knokspack_scheduled_backup', array($this, 'create_scheduled_backup'));
     }
 
     public function create_backup($type = 'full') {
@@ -297,7 +297,7 @@ class WPSS_Backup {
     }
 
     public function ajax_create_backup() {
-        check_ajax_referer('wpss_backup_nonce');
+        check_ajax_referer('knokspack_backup_nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Insufficient permissions');
         }
@@ -313,7 +313,7 @@ class WPSS_Backup {
     }
 
     public function ajax_restore_backup() {
-        check_ajax_referer('wpss_backup_nonce');
+        check_ajax_referer('knokspack_backup_nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Insufficient permissions');
         }
@@ -329,7 +329,7 @@ class WPSS_Backup {
     }
 
     public function ajax_delete_backup() {
-        check_ajax_referer('wpss_backup_nonce');
+        check_ajax_referer('knokspack_backup_nonce');
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Insufficient permissions');
         }
@@ -358,4 +358,4 @@ class WPSS_Backup {
 }
 
 // Initialize the backup module
-new WPSS_Backup();
+new Knokspack_Backup();
