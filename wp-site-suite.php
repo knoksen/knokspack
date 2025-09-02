@@ -13,43 +13,150 @@
  * @package Knokspack
  */
 
-// Prevent direct file access
-defined('ABSPATH') || exit;
+// Exit if accessed directly.
+if (!defined('ABSPATH')) {
+    exit;
+}
 
-// Early define plugin constants
-if (!class_exists('Knokspack')) {
-    // Define version constant
-    if (!defined('KNOKSPACK_VERSION')) {
-        define('KNOKSPACK_VERSION', '2.0.0');
+// Define plugin version
+define('KNOKSPACK_VERSION', '2.0.0');
+
+/**
+ * Main Knokspack Plugin Class
+ */
+final class Knokspack_Plugin {
+    /**
+     * @var Knokspack_Plugin single instance of this class
+     */
+    private static $instance;
+
+    /**
+     * Main Instance
+     */
+    public static function instance() {
+        if (is_null(self::$instance)) {
+            self::$instance = new self();
+        }
+        return self::$instance;
     }
 
-    // Define file constant
-    if (!defined('KNOKSPACK_PLUGIN_FILE')) {
-        define('KNOKSPACK_PLUGIN_FILE', __FILE__);
-    }
-    
-    // Load core WordPress files
-    if (!defined('WPINC')) {
-        define('WPINC', 'wp-includes');
-    }
+    /**
+     * Constructor.
+     */
+    public function __construct() {
+        $this->define_constants();
+        $this->includes();
+        $this->init_hooks();
 
-    require_once dirname(dirname(dirname(__FILE__))) . '/wp-load.php';
-
-    // Other plugin constants
-    if (!defined('KNOKSPACK_PLUGIN_BASENAME')) {
-        define('KNOKSPACK_PLUGIN_BASENAME', plugin_basename(__FILE__));
+        do_action('knokspack_loaded');
     }
 
-    if (!defined('KNOKSPACK_PLUGIN_DIR')) {
-        define('KNOKSPACK_PLUGIN_DIR', plugin_dir_path(__FILE__));
+    /**
+     * Define Constants
+     */
+    private function define_constants() {
+        $this->define('KNOKSPACK_PLUGIN_FILE', __FILE__);
+        $this->define('KNOKSPACK_PLUGIN_BASENAME', plugin_basename(__FILE__));
+        $this->define('KNOKSPACK_PLUGIN_DIR', plugin_dir_path(__FILE__));
+        $this->define('KNOKSPACK_PLUGIN_URL', plugin_dir_url(__FILE__));
+        $this->define('KNOKSPACK_INCLUDES_DIR', KNOKSPACK_PLUGIN_DIR . 'includes/');
+        $this->define('KNOKSPACK_MODULES_DIR', KNOKSPACK_PLUGIN_DIR . 'modules/');
+        $this->define('KNOKSPACK_ASSETS_URL', KNOKSPACK_PLUGIN_URL . 'assets/');
+        $this->define('KNOKSPACK_DB_VERSION', '1.0.0');
     }
 
-    if (!defined('KNOKSPACK_PLUGIN_URL')) {
-        define('KNOKSPACK_PLUGIN_URL', plugin_dir_url(__FILE__));
+    /**
+     * Define constant if not already defined
+     */
+    private function define($name, $value) {
+        if (!defined($name)) {
+            define($name, $value);
+        }
     }
 
-    if (!defined('KNOKSPACK_INCLUDES_DIR')) {
-        define('KNOKSPACK_INCLUDES_DIR', KNOKSPACK_PLUGIN_DIR . 'includes/');
+    /**
+     * Include required files
+     */
+    private function includes() {
+        // Core includes
+        require_once KNOKSPACK_INCLUDES_DIR . 'class-knokspack-autoloader.php';
+        require_once KNOKSPACK_INCLUDES_DIR . 'class-knokspack.php';
+
+        // Load modules
+        $modules = array(
+            'ads', 'ai', 'backup', 'cdn', 'crm', 'dashboard',
+            'embed', 'growth', 'mobile', 'promotion', 'scan',
+            'security', 'social', 'stats', 'video'
+        );
+
+        foreach ($modules as $module) {
+            $module_file = KNOKSPACK_MODULES_DIR . $module . '.php';
+            if (file_exists($module_file)) {
+                require_once $module_file;
+            }
+        }
+    }
+
+    /**
+     * Initialize hooks
+     */
+    private function init_hooks() {
+        register_activation_hook(__FILE__, array($this, 'activate'));
+        register_deactivation_hook(__FILE__, array($this, 'deactivate'));
+
+        add_action('plugins_loaded', array($this, 'init'));
+        add_action('init', array($this, 'load_textdomain'));
+    }
+
+    /**
+     * Initialize plugin
+     */
+    public function init() {
+        do_action('before_knokspack_init');
+
+        // Init main plugin class
+        knokspack();
+
+        do_action('knokspack_init');
+    }
+
+    /**
+     * Load translations
+     */
+    public function load_textdomain() {
+        load_plugin_textdomain(
+            'knokspack',
+            false,
+            dirname(plugin_basename(__FILE__)) . '/languages'
+        );
+    }
+
+    /**
+     * Activation hook
+     */
+    public function activate() {
+        knokspack()->activate();
+        flush_rewrite_rules();
+    }
+
+    /**
+     * Deactivation hook
+     */
+    public function deactivate() {
+        knokspack()->deactivate();
+        flush_rewrite_rules();
+    }
+}
+
+/**
+ * Returns the main instance of Knokspack_Plugin
+ */
+function knokspack_plugin() {
+    return Knokspack_Plugin::instance();
+}
+
+// Global for backwards compatibility
+$GLOBALS['knokspack'] = knokspack_plugin();
 }
 
 // Define plugin constants

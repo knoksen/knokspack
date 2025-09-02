@@ -1,5 +1,5 @@
 {
-  "name": "knokspack-ai-assistant",
+  "name": "knokspack",
   "private": true,
   "version": "2.0.0",
   "type": "module",
@@ -15,7 +15,10 @@
     "@google/genai": "^1.12.0",
     "@google/generative-ai": "^0.24.1",
     "applicationinsights": "^3.9.0",
+    "chart.js": "^4.4.1",
+    "date-fns": "^3.3.1",
     "react": "^18.2.0",
+    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.0"
   },

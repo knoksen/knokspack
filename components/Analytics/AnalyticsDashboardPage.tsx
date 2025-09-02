@@ -31,13 +31,13 @@ const MOCK_TOP_REFERRERS: TopReferrer[] = [
 ];
 
 const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode }> = ({ title, value, icon }) => (
-    <div className="bg-white p-6 rounded-lg shadow-md flex items-center gap-4">
+    <div className="stats-card flex items-center gap-4">
         <div className="text-knokspack-primary bg-knokspack-primary-light p-3 rounded-full">
             {icon}
         </div>
         <div>
-            <p className="text-sm font-medium text-knokspack-gray">{title}</p>
-            <p className="text-2xl font-bold text-knokspack-dark mt-1">{value}</p>
+            <h3>{title}</h3>
+            <div className="stats-value">{value}</div>
         </div>
     </div>
 );
@@ -45,7 +45,7 @@ const StatCard: React.FC<{ title: string; value: string; icon: React.ReactNode }
 const AnalyticsChart: React.FC<{ data: AnalyticsDataPoint[] }> = ({ data }) => {
     const maxViews = Math.max(...data.map(d => d.views), 0);
     return (
-        <div className="h-80 w-full bg-white p-4 rounded-lg shadow-md">
+        <div className="chart-container">
             <div className="w-full h-full relative">
                 {/* Y-Axis lines and labels */}
                 {[...Array(5)].map((_, i) => (
@@ -78,6 +78,7 @@ const AnalyticsChart: React.FC<{ data: AnalyticsDataPoint[] }> = ({ data }) => {
 const AnalyticsDashboardPage: React.FC = () => {
     const [dateRange, setDateRange] = useState('Last 30 days');
     const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleExport = () => {
         const headers = "date,views\n";
@@ -96,7 +97,12 @@ const AnalyticsDashboardPage: React.FC = () => {
     };
 
     return (
-        <div className="py-20 md:py-24 bg-knokspack-light-gray">
+        <div className="knokspack-analytics">
+            {isLoading && (
+                <div className="loading-overlay">
+                    <div className="spinner"></div>
+                </div>
+            )}
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex flex-col md:flex-row justify-between md:items-center mb-8">
                     <div className="mb-6 md:mb-0">
@@ -108,7 +114,7 @@ const AnalyticsDashboardPage: React.FC = () => {
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="relative">
+                        <div className="period-selector relative">
                             <Button variant="outline" onClick={() => setIsDateRangeOpen(!isDateRangeOpen)}>{dateRange}</Button>
                              {isDateRangeOpen && (
                                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
@@ -129,7 +135,7 @@ const AnalyticsDashboardPage: React.FC = () => {
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+                <div className="stats-overview">
                     <StatCard title="Total Views" value="48,291" icon={<EyeIcon />} />
                     <StatCard title="Unique Visitors" value="32,812" icon={<UsersIcon />} />
                     <StatCard title="Bounce Rate" value="42.5%" icon={<ChartBarIcon />} />
@@ -137,51 +143,69 @@ const AnalyticsDashboardPage: React.FC = () => {
                 </div>
                 
                 {/* Main Chart */}
-                 <div className="mb-10">
-                     <h2 className="text-2xl font-bold text-knokspack-dark mb-4">Traffic Trend</h2>
-                    <AnalyticsChart data={MOCK_ANALYTICS_DATA} />
+                <div className="chart-grid">
+                    <div>
+                        <h2 className="text-2xl font-bold text-knokspack-dark mb-4">Traffic Trend</h2>
+                        <AnalyticsChart data={MOCK_ANALYTICS_DATA} />
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                     {/* Top Content */}
-                    <div>
-                        <h2 className="text-2xl font-bold text-knokspack-dark mb-4">Top Content</h2>
-                        <div className="bg-white rounded-lg shadow-md">
-                            <ul className="divide-y divide-gray-200">
+                    <div className="top-pages">
+                        <h2>Top Content</h2>
+                        <table className="w-full">
+                            <thead>
+                                <tr>
+                                    <th className="text-left">Page</th>
+                                    <th className="text-right">Views</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {MOCK_TOP_CONTENT.map(content => (
-                                    <li key={content.id} className="p-4 flex items-center justify-between">
-                                        <div className="truncate">
-                                            <p className="font-semibold text-knokspack-dark truncate" title={content.title}>{content.title}</p>
-                                            <p className="text-sm text-knokspack-gray truncate">{content.url}</p>
-                                        </div>
-                                        <div className="text-right ml-4">
+                                    <tr key={content.id}>
+                                        <td className="py-2">
+                                            <div className="truncate">
+                                                <p className="font-semibold text-knokspack-dark truncate" title={content.title}>{content.title}</p>
+                                                <p className="text-sm text-knokspack-gray truncate">{content.url}</p>
+                                            </div>
+                                        </td>
+                                        <td className="text-right py-2">
                                             <p className="font-bold text-knokspack-dark">{content.views.toLocaleString()}</p>
                                             <p className="text-sm text-gray-500">views</p>
-                                        </div>
-                                    </li>
+                                        </td>
+                                    </tr>
                                 ))}
-                            </ul>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                      {/* Top Referrers */}
-                     <div>
-                        <h2 className="text-2xl font-bold text-knokspack-dark mb-4">Top Referrers</h2>
-                        <div className="bg-white rounded-lg shadow-md">
-                             <ul className="divide-y divide-gray-200">
+                     <div className="top-pages">
+                        <h2>Top Referrers</h2>
+                        <table className="w-full">
+                            <thead>
+                                <tr>
+                                    <th className="text-left">Source</th>
+                                    <th className="text-right">Views</th>
+                                </tr>
+                            </thead>
+                            <tbody>
                                 {MOCK_TOP_REFERRERS.map(referrer => (
-                                    <li key={referrer.id} className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <GlobeAltIcon />
-                                            <p className="font-semibold text-knokspack-dark">{referrer.domain}</p>
-                                        </div>
-                                        <div className="text-right">
-                                             <p className="font-bold text-knokspack-dark">{referrer.views.toLocaleString()}</p>
-                                             <p className="text-sm text-gray-500">views</p>
-                                        </div>
-                                    </li>
+                                    <tr key={referrer.id}>
+                                        <td className="py-2">
+                                            <div className="flex items-center gap-3">
+                                                <GlobeAltIcon />
+                                                <p className="font-semibold text-knokspack-dark">{referrer.domain}</p>
+                                            </div>
+                                        </td>
+                                        <td className="text-right py-2">
+                                            <p className="font-bold text-knokspack-dark">{referrer.views.toLocaleString()}</p>
+                                            <p className="text-sm text-gray-500">views</p>
+                                        </td>
+                                    </tr>
                                 ))}
-                            </ul>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 

@@ -36,6 +36,7 @@ import MobileDashboardPage from './components/Mobile/MobileDashboardPage';
 import BackupDashboardPage from './components/Backup/BackupDashboardPage';
 import SearchDashboardPage from './components/Search/SearchDashboardPage';
 import TeamPage from './components/Team/TeamPage';
+import './assets/css/analytics.css';
 
 function App(): React.ReactNode {
   const { isAuthModalOpen, closeAuthModal } = useContext(UserContext);
