@@ -79,8 +79,8 @@ describe('AIAssistantPage', () => {
 
     renderWithContext(<AIAssistantPage />);
 
-    // Select Image content type
-    const imageRadio = screen.getByLabelText(/image/i);
+    // Select Image content type using the radio button
+    const imageRadio = screen.getByRole('radio', { name: /image/i });
     fireEvent.click(imageRadio);
 
     // Type in the prompt
@@ -98,14 +98,19 @@ describe('AIAssistantPage', () => {
   });
 
   it('handles copy functionality', async () => {
-    const mockStream = {
-      text: 'Content to copy'
-    };
-    (generateContentStream as jest.Mock).mockResolvedValue(mockStream);
+    // Create a mock stream that simulates the AI response
+    const mockContent = 'AI generated text here';
+    
+    // Setup the mock to return content chunk by chunk
+    (generateContentStream as jest.Mock).mockImplementation(() => ({
+      [Symbol.asyncIterator]: async function* () {
+        yield { text: mockContent };
+      }
+    }));
 
     // Mock clipboard API
     const mockClipboard = {
-      writeText: jest.fn()
+      writeText: jest.fn().mockResolvedValue(undefined)
     };
     Object.assign(navigator, {
       clipboard: mockClipboard
@@ -114,22 +119,20 @@ describe('AIAssistantPage', () => {
     renderWithContext(<AIAssistantPage />);
 
     // Generate some content first
-    const promptInput = screen.getByLabelText(/what do you want to create/i);
+    const promptInput = screen.getByRole('textbox', { name: /what do you want to create/i });
     await userEvent.type(promptInput, 'test prompt');
-    fireEvent.click(screen.getByText(/generate content/i));
+    const generateButton = screen.getByRole('button', { name: /generate content/i });
+    fireEvent.click(generateButton);
 
-    await waitFor(() => {
-      expect(screen.getByText('Content to copy')).toBeInTheDocument();
-    });
-
+    // Wait for content to be generated and copy button to appear
+    const copyButton = await screen.findByRole('button', { name: /copy/i });
+    
     // Click copy button
-    const copyButton = screen.getByText(/copy/i);
-    fireEvent.click(copyButton);
+    await userEvent.click(copyButton);
 
-    await waitFor(() => {
-      expect(screen.getByText('Copied!')).toBeInTheDocument();
-      expect(mockClipboard.writeText).toHaveBeenCalledWith('Content to copy');
-    });
+    // Verify copy functionality
+    expect(await screen.findByText(/copied!/i)).toBeInTheDocument();
+    expect(mockClipboard.writeText).toHaveBeenCalledWith('AI generated text here');
   });
 
   it('handles error states', async () => {
@@ -147,10 +150,12 @@ describe('AIAssistantPage', () => {
     });
   });
 
-  it('requires authentication for generation', () => {
+  it('requires authentication for generation', async () => {
+    const mockOpenAuthModal = jest.fn();
     const unauthenticatedContext = {
-      ...mockUserContext,
+      user: null,
       isAuthenticated: false,
+      openAuthModal: mockOpenAuthModal
     };
 
     render(
@@ -159,16 +164,23 @@ describe('AIAssistantPage', () => {
       </UserContext.Provider>
     );
 
-    // Try to generate content
-    fireEvent.click(screen.getByText(/generate content/i));
+    // Type in the prompt
+    const promptInput = screen.getByRole('textbox', { name: /what do you want to create/i });
+    await userEvent.type(promptInput, 'test prompt');
 
-    expect(unauthenticatedContext.openAuthModal).toHaveBeenCalledWith('login');
+    // Try to generate content
+    const generateButton = screen.getByRole('button', { name: /generate content/i });
+    fireEvent.click(generateButton);
+
+    expect(mockOpenAuthModal).toHaveBeenCalledWith('login');
+    expect(generateContentStream).not.toHaveBeenCalled();
   });
 
   it('handles subscription limitations', () => {
     const limitedContext = {
-      ...mockUserContext,
       user: { subscriptionPlan: 'Free' },
+      isAuthenticated: true,
+      openAuthModal: jest.fn()
     };
 
     render(
@@ -178,9 +190,19 @@ describe('AIAssistantPage', () => {
     );
 
     // Try to use a premium feature
-    const imageRadio = screen.getByLabelText(/image/i);
-    fireEvent.click(imageRadio);
+    const premiumFeatures = screen.getAllByRole('radio', { name: /(press release|job description|image|plugin readme|wp readme)/i });
 
-    expect(screen.getByText(/requires an upgrade/i)).toBeInTheDocument();
+    // Verify all premium features are disabled
+    premiumFeatures.forEach(button => {
+      expect(button).toBeDisabled();
+      const label = button.closest('label');
+      expect(label).toHaveClass('cursor-not-allowed');
+      expect(label).toHaveClass('text-gray-400');
+    });
   });
 });
+
+<?php
+// The plugin should be installed in wp-content/plugins/knokspack/
+// Main file: wp-site-suite.php
+// Verify plugin is showing up in WordPress admin
