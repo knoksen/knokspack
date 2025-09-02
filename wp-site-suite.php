@@ -1,0 +1,260 @@
+<?php
+/**
+ * Plugin Name: Knokspack - Complete WordPress Toolkit
+ * Description: A comprehensive suite of tools for security, performance, backups, analytics, AI assistance, and more.
+ * Version: 0.3.0
+ * Author: knoksen
+ * Author URI: https://knoksen.com
+ * Requires at least: 6.0
+ * Requires PHP: 7.4
+ * Text Domain: knokspack
+ * Domain Path: /languages
+ */
+
+// Prevent direct file access
+if (!defined('ABSPATH')) exit;
+
+// Define plugin constants
+define('KNOKSPACK_VERSION', '0.3.0');
+define('KNOKSPACK_PATH', plugin_dir_path(__FILE__));
+define('KNOKSPACK_URL', plugin_dir_url(__FILE__));
+define('KNOKSPACK_BASENAME', plugin_basename(__FILE__));
+
+// Load required WordPress files
+require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+
+// Initialize the plugin
+function knokspack_init() {
+    // Load text domain for translations
+    load_plugin_textdomain('knokspack', false, dirname(KNOKSPACK_BASENAME) . '/languages');
+
+    // Load module files
+    $modules = array(
+        'performance', 'security', 'backup', 'analytics', 'ai', 'social',
+        'stats', 'crm', 'growth', 'promotion', 'search', 'cdn', 'scan',
+        'blocks', 'icons', 'design'
+    );
+
+    foreach ($modules as $module) {
+        $module_file = KNOKSPACK_PATH . 'modules/' . $module . '.php';
+        if (file_exists($module_file)) {
+            require_once $module_file;
+        }
+    }
+}
+
+// Initialize on plugins loaded
+add_action('plugins_loaded', 'knokspack_init');
+
+// Register activation hook
+register_activation_hook(__FILE__, 'knokspack_activate');
+
+function knokspack_activate() {
+    // Create necessary database tables
+    global $wpdb;
+    
+    // Create activity log table
+    $table_name = $wpdb->prefix . 'knokspack_activity_log';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        user_id bigint(20) NOT NULL,
+        action varchar(255) NOT NULL,
+        object_type varchar(50) NOT NULL,
+        object_id bigint(20),
+        ip_address varchar(45),
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY user_id (user_id),
+        KEY action (action),
+        KEY created_at (created_at)
+    ) $charset_collate;";
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta($sql);
+
+    // Create backups table
+    $table_name = $wpdb->prefix . 'knokspack_backups';
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        type varchar(50) NOT NULL,
+        file_path varchar(255) NOT NULL,
+        size bigint(20) NOT NULL,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        status varchar(50) DEFAULT 'completed',
+        PRIMARY KEY  (id),
+        KEY type (type),
+        KEY status (status),
+        KEY created_at (created_at)
+    ) $charset_collate;";
+    dbDelta($sql);
+
+    // Create analytics table
+    $table_name = $wpdb->prefix . 'knokspack_analytics';
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        id bigint(20) NOT NULL AUTO_INCREMENT,
+        page_id bigint(20),
+        url varchar(255) NOT NULL,
+        visitor_id varchar(32),
+        referrer varchar(255),
+        device varchar(50),
+        browser varchar(50),
+        country varchar(2),
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY  (id),
+        KEY page_id (page_id),
+        KEY visitor_id (visitor_id),
+        KEY created_at (created_at)
+    ) $charset_collate;";
+    dbDelta($sql);
+
+    // Set default options
+    $default_options = array(
+        'security' => array(
+            'firewall_enabled' => true,
+            'brute_force_protection' => true,
+            'activity_log_enabled' => true,
+            'scan_frequency' => 'daily'
+        ),
+        'performance' => array(
+            'cache_enabled' => true,
+            'minify_css' => true,
+            'minify_js' => true,
+            'lazy_load' => true
+        ),
+        'backup' => array(
+            'frequency' => 'daily',
+            'retention_days' => 30,
+            'include_files' => true,
+            'include_database' => true
+        )
+    );
+
+    foreach ($default_options as $option_name => $values) {
+        if (!get_option('knokspack_' . $option_name)) {
+            add_option('knokspack_' . $option_name, $values);
+        }
+    }
+
+    // Create cache directory
+    $cache_dir = WP_CONTENT_DIR . '/cache/knokspack';
+    if (!file_exists($cache_dir)) {
+        wp_mkdir_p($cache_dir);
+    }
+
+    // Create backup directory
+    $backup_dir = WP_CONTENT_DIR . '/backups/knokspack';
+    if (!file_exists($backup_dir)) {
+        wp_mkdir_p($backup_dir);
+    }
+
+    // Clear any existing cache
+    if (function_exists('wp_cache_flush')) {
+        wp_cache_flush();
+    }
+
+    // Flush rewrite rules
+    flush_rewrite_rules();
+}
+
+function knokspack_enqueue_scripts() {
+    if (!knokspack_should_load_assets()) return;
+
+    $manifest_path = KNOKSPACK_PATH . 'dist/.vite/manifest.json';
+    if (!file_exists($manifest_path)) {
+        error_log('Knokspack: manifest.json not found at ' . $manifest_path);
+        return;
+    }
+
+    $manifest = json_decode(file_get_contents($manifest_path), true);
+    if (!is_array($manifest)) {
+        error_log('Knokspack: Invalid manifest.json');
+        return;
+    }
+
+    // Font dependencies
+    wp_enqueue_style(
+        'knokspack-fonts',
+        'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap',
+        [],
+        KNOKSPACK_VERSION
+    );
+
+    // Enqueue CSS if exists
+    foreach ($manifest as $key => $entry) {
+        if (isset($entry['css']) && is_array($entry['css'])) {
+            foreach ($entry['css'] as $css_file) {
+                wp_enqueue_style(
+                    'knokspack-' . md5($css_file),
+                    KNOKSPACK_URL . $css_file,
+                    [],
+                    KNOKSPACK_VERSION
+                );
+            }
+        }
+    }
+
+    // Enqueue vendor chunk first
+    foreach ($manifest as $key => $entry) {
+        if (strpos($key, 'vendor') !== false && isset($entry['file'])) {
+            wp_enqueue_script(
+                'knokspack-vendor',
+                KNOKSPACK_URL . $entry['file'],
+                [],
+                KNOKSPACK_VERSION,
+                true
+            );
+            break;
+        }
+    }
+
+    // Then enqueue main chunk
+    foreach ($manifest as $key => $entry) {
+        if (strpos($key, 'index') !== false && isset($entry['file'])) {
+            wp_enqueue_script(
+                'knokspack-main',
+                KNOKSPACK_URL . $entry['file'],
+                ['knokspack-vendor'],
+                KNOKSPACK_VERSION,
+                true
+            );
+            break;
+        }
+    }
+
+    wp_localize_script('knokspack-main', 'knokspackData', [
+        'ajaxUrl' => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('knokspack-nonce'),
+        'pluginUrl' => KNOKSPACK_URL,
+    ]);
+}
+
+function knokspack_should_load_assets() {
+    $screen = get_current_screen();
+    if (!$screen) return false;
+
+    return (
+        strpos($screen->id, 'knokspack') !== false ||
+        strpos($screen->id, 'toplevel_page_knokspack') !== false
+    );
+}
+
+function knokspack_admin_menu() {
+    add_menu_page(
+        'Knokspack',
+        'Knokspack',
+        'manage_options',
+        'knokspack',
+        'knokspack_render_admin_page',
+        'dashicons-admin-generic',
+        30
+    );
+}
+
+function knokspack_render_admin_page() {
+    echo '<div class="wrap"><div id="knokspack-root"></div></div>';
+}
+
+add_action('admin_menu', 'knokspack_admin_menu');
+add_action('admin_enqueue_scripts', 'knokspack_enqueue_scripts');

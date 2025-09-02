@@ -1,23 +1,37 @@
 
 
-// Add your instrumentation key or use the APPLICATIONINSIGHTSKEY environment variable on your production machine to start collecting data.
-var ai = require('applicationinsights');
-ai.setup(process.env.APPLICATIONINSIGHTSKEY || 'your_instrumentation_key').start();
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { UserProvider } from './contexts/UserContext';
+import './src/styles/main.css';
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
+// Function to initialize the app
+function initApp() {
+  const rootElement = document.getElementById('knokspack-root');
+  if (!rootElement) {
+    console.error("Could not find knokspack-root element. Retrying in 100ms...");
+    setTimeout(initApp, 100);
+    return;
+  }
+
+  try {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <UserProvider>
+          <App />
+        </UserProvider>
+      </React.StrictMode>
+    );
+  } catch (error) {
+    console.error("Error mounting React application:", error);
+  }
 }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <UserProvider>
-      <App />
-    </UserProvider>
-  </React.StrictMode>
-);
+// Initialize after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
