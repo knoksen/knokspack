@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Knokspack - Complete WordPress Toolkit
  * Description: A comprehensive suite of tools for security, performance, backups, analytics, AI assistance, and more.
- * Version: 0.3.0
+ * Version: 2.0.0
  * Author: knoksen
  * Author URI: https://knoksen.com
  * Requires at least: 6.0
@@ -15,7 +15,7 @@
 if (!defined('ABSPATH')) exit;
 
 // Define plugin constants
-define('KNOKSPACK_VERSION', '0.3.0');
+define('KNOKSPACK_VERSION', '2.0.0');
 define('KNOKSPACK_PATH', plugin_dir_path(__FILE__));
 define('KNOKSPACK_URL', plugin_dir_url(__FILE__));
 define('KNOKSPACK_BASENAME', plugin_basename(__FILE__));
