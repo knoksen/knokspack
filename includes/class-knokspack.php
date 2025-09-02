@@ -38,12 +38,7 @@ final class Knokspack {
      * Define Constants
      */
     private function define_constants() {
-        $this->define('KNOKSPACK_PLUGIN_FILE', __FILE__);
-        $this->define('KNOKSPACK_PLUGIN_BASENAME', plugin_basename(__FILE__));
-        $this->define('KNOKSPACK_VERSION', '2.0.0');
         $this->define('KNOKSPACK_DB_VERSION', '1.0.0');
-        $this->define('KNOKSPACK_PLUGIN_DIR', plugin_dir_path(__FILE__));
-        $this->define('KNOKSPACK_PLUGIN_URL', plugin_dir_url(__FILE__));
     }
 
     /**
@@ -61,7 +56,7 @@ final class Knokspack {
      * Load required dependencies
      */
     private function load_dependencies() {
-        include_once KNOKSPACK_PLUGIN_DIR . 'includes/class-knokspack-autoloader.php';
+        // Autoloader is already loaded in the main plugin file
         new Knokspack_Autoloader();
     }
 
@@ -140,8 +135,8 @@ final class Knokspack {
         );
 
         foreach ($modules as $module => $config) {
-            if (file_exists(KNOKSPACK_PLUGIN_DIR . $config['file'])) {
-                include_once KNOKSPACK_PLUGIN_DIR . $config['file'];
+            if (file_exists(KNOKSPACK_MODULES_DIR . $config['file'])) {
+                include_once KNOKSPACK_MODULES_DIR . $config['file'];
                 if (class_exists($config['class'])) {
                     new $config['class']();
                 }

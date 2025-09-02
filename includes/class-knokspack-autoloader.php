@@ -24,7 +24,7 @@ class Knokspack_Autoloader {
 
         spl_autoload_register(array($this, 'autoload'));
 
-        $this->include_path = untrailingslashit(plugin_dir_path(KNOKSPACK_PLUGIN_FILE)) . '/includes/';
+        $this->include_path = KNOKSPACK_INCLUDES_DIR;
     }
 
     /**
