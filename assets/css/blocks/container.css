@@ -1,0 +1,16 @@
+.knokspack-container {
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+.knokspack-container-wide {
+    max-width: 1200px;
+}
+
+.knokspack-container-narrow {
+    max-width: 800px;
+}
+
+.knokspack-container-full {
+    width: 100%;
+}

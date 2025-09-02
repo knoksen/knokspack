@@ -1,11 +1,19 @@
 <?php
 if (!defined('ABSPATH')) exit;
 
-class WPSS_Design {
+class Knokspack_Design {
     private $options;
 
     public function __construct() {
-        $this->options = get_option('wpss_design_settings', array(
+        if (!function_exists('add_action')) {
+            return;
+        }
+        // Delay initialization until WordPress is fully loaded
+        add_action('init', array($this, 'init'));
+    }
+
+    public function init() {
+        $this->options = get_option('knokspack_design_settings', array(
             'enable_blocks' => true,
             'enable_templates' => true,
             'custom_css' => '',
@@ -14,10 +22,10 @@ class WPSS_Design {
         ));
 
         // Initialize design features
-        add_action('init', array($this, 'register_blocks'));
+        add_action('init', array($this, 'register_blocks'), 20);
         add_action('wp_enqueue_scripts', array($this, 'enqueue_custom_styles'));
         add_action('admin_menu', array($this, 'add_design_menu'));
-        add_action('wp_ajax_wpss_save_design', array($this, 'ajax_save_design'));
+        add_action('wp_ajax_knokspack_save_design', array($this, 'ajax_save_design'));
     }
 
     public function register_blocks() {
@@ -26,10 +34,10 @@ class WPSS_Design {
         }
 
         // Register custom blocks for design
-        register_block_type('wpss/heading', array(
-            'editor_script' => 'wpss-heading-block',
-            'editor_style' => 'wpss-heading-block',
-            'style' => 'wpss-heading-block',
+        register_block_type('knokspack/heading', array(
+            'editor_script' => 'knokspack-heading-block',
+            'editor_style' => 'knokspack-heading-block',
+            'style' => 'knokspack-heading-block',
             'attributes' => array(
                 'content' => array('type' => 'string'),
                 'level' => array('type' => 'number', 'default' => 2),
@@ -39,10 +47,10 @@ class WPSS_Design {
             'render_callback' => array($this, 'render_heading_block')
         ));
 
-        register_block_type('wpss/container', array(
-            'editor_script' => 'wpss-container-block',
-            'editor_style' => 'wpss-container-block',
-            'style' => 'wpss-container-block',
+        register_block_type('knokspack/container', array(
+            'editor_script' => 'knokspack-container-block',
+            'editor_style' => 'knokspack-container-block',
+            'style' => 'knokspack-container-block',
             'attributes' => array(
                 'width' => array('type' => 'string', 'default' => 'wide'),
                 'padding' => array('type' => 'object'),
@@ -55,26 +63,34 @@ class WPSS_Design {
 
         // Register block scripts
         wp_register_script(
-            'wpss-heading-block',
-            plugins_url('js/blocks/heading.js', dirname(__FILE__)),
-            array('wp-blocks', 'wp-element', 'wp-editor')
+            'knokspack-heading-block',
+            KNOKSPACK_URL . 'assets/js/blocks/heading.js',
+            array('wp-blocks', 'wp-element', 'wp-editor'),
+            KNOKSPACK_VERSION,
+            true
         );
 
         wp_register_script(
-            'wpss-container-block',
-            plugins_url('js/blocks/container.js', dirname(__FILE__)),
-            array('wp-blocks', 'wp-element', 'wp-editor')
+            'knokspack-container-block',
+            KNOKSPACK_URL . 'assets/js/blocks/container.js',
+            array('wp-blocks', 'wp-element', 'wp-editor'),
+            KNOKSPACK_VERSION,
+            true
         );
 
         // Register block styles
         wp_register_style(
-            'wpss-heading-block',
-            plugins_url('css/blocks/heading.css', dirname(__FILE__))
+            'knokspack-heading-block',
+            KNOKSPACK_URL . 'assets/css/blocks/heading.css',
+            array(),
+            KNOKSPACK_VERSION
         );
 
         wp_register_style(
-            'wpss-container-block',
-            plugins_url('css/blocks/container.css', dirname(__FILE__))
+            'knokspack-container-block',
+            KNOKSPACK_URL . 'assets/css/blocks/container.css',
+            array(),
+            KNOKSPACK_VERSION
         );
     }
 
@@ -147,14 +163,33 @@ class WPSS_Design {
     }
 
     public function enqueue_custom_styles() {
+        // Register and enqueue base design styles
+        wp_register_style(
+            'knokspack-design',
+            KNOKSPACK_URL . 'assets/css/design.css',
+            array(),
+            KNOKSPACK_VERSION
+        );
+        wp_enqueue_style('knokspack-design');
+
         // Custom CSS
         if (!empty($this->options['custom_css'])) {
-            wp_add_inline_style('wpss-design', $this->options['custom_css']);
+            wp_add_inline_style('knokspack-design', $this->options['custom_css']);
         }
+
+        // Register and enqueue base design scripts
+        wp_register_script(
+            'knokspack-design',
+            KNOKSPACK_URL . 'assets/js/design.js',
+            array('jquery'),
+            KNOKSPACK_VERSION,
+            true
+        );
+        wp_enqueue_script('knokspack-design');
 
         // Custom JS
         if (!empty($this->options['custom_js'])) {
-            wp_add_inline_script('wpss-design', $this->options['custom_js']);
+            wp_add_inline_script('knokspack-design', $this->options['custom_js']);
         }
 
         // Custom Fonts
@@ -162,7 +197,7 @@ class WPSS_Design {
             foreach ($this->options['custom_fonts'] as $font) {
                 if (!empty($font['url'])) {
                     wp_enqueue_style(
-                        'wpss-font-' . sanitize_title($font['name']),
+                        'knokspack-font-' . sanitize_title($font['name']),
                         $font['url']
                     );
                 }
@@ -172,11 +207,11 @@ class WPSS_Design {
 
     public function add_design_menu() {
         add_submenu_page(
-            'wpss',
+            'knokspack',
             'Design Settings',
             'Design',
             'manage_options',
-            'wpss-design',
+            'knokspack-design',
             array($this, 'render_design_page')
         );
     }

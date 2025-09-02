@@ -1,0 +1,15 @@
+.knokspack-heading {
+    margin: 1em 0;
+}
+
+.knokspack-heading[style*="text-align: center"] {
+    text-align: center;
+}
+
+.knokspack-heading[style*="text-align: right"] {
+    text-align: right;
+}
+
+.knokspack-heading[style*="text-align: justify"] {
+    text-align: justify;
+}
