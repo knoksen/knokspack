@@ -1,3 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      - dependency-type: "direct"
+        update-types: ["version-update:semver-major"]
 # .github/dependabot.yml
 version: 2
 
