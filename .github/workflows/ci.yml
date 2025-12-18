@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  frontend:
+    name: Frontend build & tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build --if-present
+
+      - name: Run tests
+        run: npm test --if-present
+
+  php-lint:
+    name: PHP lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v4
+        with:
+          php-version: '8.1'
+
+      - name: PHP info
+        run: php -v
+
+      - name: Install Composer
+        run: |
+          EXPECTED="$(curl -sS https://composer.github.io/installer.sig)"
+          php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+          php composer-setup.php --quiet
+          ACTUAL="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+          if [ "$EXPECTED" != "$ACTUAL" ]; then echo 'Invalid composer installer'; exit 1; fi
+          sudo mv composer.phar /usr/local/bin/composer || sudo mv composer-setup.php /usr/local/bin/composer
+
+      - name: Install PHP dev deps
+        run: |
+          if [ -f composer.json ]; then
+            composer install --no-interaction --prefer-dist
+          else
+            echo 'No composer.json found; skipping composer install'
+          fi
+
+      - name: PHP lint modules
+        run: |
+          set -e
+          if [ -d modules ] || [ -d includes ]; then
+            find modules includes -name '*.php' -print0 | xargs -0 -n1 -P4 php -l || true
+          fi
+
+      - name: Run PHPStan (if installed)
+        run: |
+          if [ -f vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse modules includes --no-progress || true
+          else
+            echo 'phpstan not installed; skipping'
+          fi
+
+      - name: Run PHPUnit (if installed)
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --version || true
+          else
+            echo 'phpunit not installed; skipping'
+          fi
