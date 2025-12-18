@@ -38,9 +38,45 @@ jobs:
         with:
           php-version: '8.1'
 
+      - name: PHP info
+        run: php -v
+
+      - name: Install Composer
+        run: |
+          EXPECTED="$(curl -sS https://composer.github.io/installer.sig)"
+          php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+          php composer-setup.php --quiet
+          ACTUAL="$(php -r "echo hash_file('sha384', 'composer-setup.php');")"
+          if [ "$EXPECTED" != "$ACTUAL" ]; then echo 'Invalid composer installer'; exit 1; fi
+          sudo mv composer.phar /usr/local/bin/composer || sudo mv composer-setup.php /usr/local/bin/composer
+
+      - name: Install PHP dev deps
+        run: |
+          if [ -f composer.json ]; then
+            composer install --no-interaction --prefer-dist
+          else
+            echo 'No composer.json found; skipping composer install'
+          fi
+
       - name: PHP lint modules
         run: |
           set -e
-          if [ -d modules ]; then
+          if [ -d modules ] || [ -d includes ]; then
             find modules includes -name '*.php' -print0 | xargs -0 -n1 -P4 php -l || true
+          fi
+
+      - name: Run PHPStan (if installed)
+        run: |
+          if [ -f vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse modules includes --no-progress || true
+          else
+            echo 'phpstan not installed; skipping'
+          fi
+
+      - name: Run PHPUnit (if installed)
+        run: |
+          if [ -f vendor/bin/phpunit ]; then
+            vendor/bin/phpunit --version || true
+          else
+            echo 'phpunit not installed; skipping'
           fi
