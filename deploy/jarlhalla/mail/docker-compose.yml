@@ -1,0 +1,19 @@
+services:
+  stalwart:
+    image: stalwartlabs/stalwart:v0.16
+    container_name: jarlhalla-mail
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "143:143"
+      - "993:993"
+      - "4190:4190"
+      - "127.0.0.1:8088:8080"
+    volumes:
+      - ./etc:/etc/stalwart
+      - ./data:/var/lib/stalwart
+      - /etc/letsencrypt:/etc/letsencrypt:ro
