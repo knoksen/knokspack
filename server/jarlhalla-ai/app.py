@@ -9,13 +9,13 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="JarlhallaAI", version="1.1.0")
+app = FastAPI(title="JarlhallaAI", version="1.1.1")
 
 Provider = Literal["openai", "anthropic", "ollama"]
 
 DEFAULT_PROVIDER = os.getenv("JARLHALLA_AI_PROVIDER", "openai").strip().lower()
 LEGACY_MODEL = os.getenv("JARLHALLA_AI_MODEL", "").strip()
-OPENAI_MODEL = os.getenv("JARLHALLA_OPENAI_MODEL", LEGACY_MODEL or "gpt-5.5").strip()
+OPENAI_MODEL = os.getenv("JARLHALLA_OPENAI_MODEL", LEGACY_MODEL or "gpt-5.6-sol").strip()
 ANTHROPIC_MODEL = os.getenv("JARLHALLA_ANTHROPIC_MODEL", "claude-sonnet-5").strip()
 OLLAMA_MODEL = os.getenv("JARLHALLA_OLLAMA_MODEL", LEGACY_MODEL or "llama3.2").strip()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
