@@ -15,12 +15,14 @@ ROOT_DOMAIN="${ROOT_DOMAIN:-jarlhalla.com}"
 run_wordpress=0
 run_admin_ai=0
 run_mail=0
+run_stats=0
 
 case "${1:---all}" in
   --all)
     run_wordpress=1
     run_admin_ai=1
     run_mail=1
+    run_stats=1
     ;;
   --wordpress)
     run_wordpress=1
@@ -31,8 +33,11 @@ case "${1:---all}" in
   --mail)
     run_mail=1
     ;;
+  --stats)
+    run_stats=1
+    ;;
   *)
-    echo "Usage: sudo $0 [--all|--wordpress|--admin-ai|--mail]" >&2
+    echo "Usage: sudo $0 [--all|--wordpress|--admin-ai|--mail|--stats]" >&2
     exit 2
     ;;
 esac
@@ -78,6 +83,12 @@ if [ "$run_admin_ai" -eq 1 ]; then
   echo
 fi
 
+if [ "$run_stats" -eq 1 ]; then
+  echo "=== AWSTATS + WEBALIZER ==="
+  ROOT_DOMAIN="$ROOT_DOMAIN" bash "$SCRIPT_DIR/bootstrap-stats.sh"
+  echo
+fi
+
 if [ "$run_mail" -eq 1 ]; then
   echo "=== MAIL SERVER ==="
   if [ "$(dns_a "$MAIL_DOMAIN" || true)" != "$PUBLIC_IP" ]; then
@@ -89,8 +100,8 @@ if [ "$run_mail" -eq 1 ]; then
   bash "$SCRIPT_DIR/bootstrap-mail-proxy.sh"
   echo
   echo "Mail server staged. MX is intentionally NOT changed by this script."
-  echo "Only publish this final MX after SMTP/IMAP, TLS, PTR and outbound TCP/25 are verified:"
-  echo "  MX  @  10  $MAIL_DOMAIN."
+  echo "Only publish MX after SMTP/IMAP, TLS, PTR and outbound TCP/25 are verified."
+  echo "If mail.$ROOT_DOMAIN is a CNAME, do not use that CNAME as the MX target."
   echo
 fi
 
@@ -102,6 +113,11 @@ if systemctl is-active --quiet jarlhalla-ai.service; then
   printf 'JarlhallaAI: '
   curl -fsS --max-time 5 http://127.0.0.1:8787/health || true
   echo
+fi
+
+if systemctl is-active --quiet jarlhalla-stats.timer; then
+  printf 'Stats timer: '
+  systemctl is-active jarlhalla-stats.timer || true
 fi
 
 if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' | grep -Fxq jarlhalla-mail; then
@@ -118,6 +134,8 @@ echo "WordPress credentials: /root/jarlhalla-wordpress-admin.txt"
 echo "Admin portal: https://$ADMIN_DOMAIN/"
 echo "JarlhallaAI: https://$ADMIN_DOMAIN/#/jarlhalla-ai"
 echo "AI provider config: /etc/jarlhalla-ai.env"
+echo "AWStats: https://$ADMIN_DOMAIN/stats/awstats/"
+echo "Webalizer: https://$ADMIN_DOMAIN/stats/webalizer/"
 echo "Mail admin: https://$MAIL_DOMAIN/admin"
 echo "Mail recovery credentials: /root/jarlhalla-mail-recovery.txt"
 echo
