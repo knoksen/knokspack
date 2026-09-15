@@ -6,6 +6,7 @@ import Footer from './components/Footer';
 import HomePage from './components/pages/HomePage';
 import PricingPage from './components/pages/PricingPage';
 import AIAssistantPage from './components/AIAssistant/AIAssistantPage';
+import JarlhallaAIPage from './components/JarlhallaAI/JarlhallaAIPage';
 import IntegrationsPage from './components/Integrations/IntegrationsPage';
 import WireframePage from './components/Wireframe/WireframePage';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -58,6 +59,7 @@ function App(): React.ReactNode {
             />
             <Route path="/pricing" element={<PricingPage />} />
             <Route path="/ai-assistant" element={<AIAssistantPage />} />
+            <Route path="/jarlhalla-ai" element={<JarlhallaAIPage />} />
             <Route path="/integrations" element={<IntegrationsPage />} />
             <Route 
               path="/security" 
