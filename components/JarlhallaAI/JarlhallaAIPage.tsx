@@ -70,6 +70,8 @@ const JarlhallaAIPage: React.FC = () => {
     }
   };
 
+  const controlLinkClass = 'px-4 py-2 rounded-md bg-white border border-gray-300 text-knokspack-dark font-medium hover:border-knokspack-primary';
+
   return (
     <div className="bg-knokspack-light-gray min-h-[calc(100vh-200px)]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10 max-w-7xl">
@@ -80,23 +82,37 @@ const JarlhallaAIPage: React.FC = () => {
             <p className="text-knokspack-gray mt-2">Private AI workspace with OpenAI, Claude and Ollama for publishing, WordPress, SEO and site operations.</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a
-              href="https://jarlhalla.com/wp-admin/"
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2 rounded-md bg-white border border-gray-300 text-knokspack-dark font-medium hover:border-knokspack-primary"
-            >
+            <a href="https://jarlhalla.com/wp-admin/" target="_blank" rel="noreferrer" className={controlLinkClass}>
               WordPress Admin
             </a>
-            <a
-              href="https://mail.jarlhalla.com/admin"
-              target="_blank"
-              rel="noreferrer"
-              className="px-4 py-2 rounded-md bg-white border border-gray-300 text-knokspack-dark font-medium hover:border-knokspack-primary"
-            >
+            <a href="https://mail.jarlhalla.com/admin" target="_blank" rel="noreferrer" className={controlLinkClass}>
               Mail Admin
             </a>
+            <a href="/stats/awstats/" target="_blank" rel="noreferrer" className={controlLinkClass}>
+              AWStats
+            </a>
+            <a href="/stats/webalizer/" target="_blank" rel="noreferrer" className={controlLinkClass}>
+              Webalizer
+            </a>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {PROVIDERS.map(([value, label]) => {
+            const providerHealth = health?.providers?.[value];
+            const configured = value === 'ollama' || Boolean(providerHealth?.configured);
+            return (
+              <div key={value} className="bg-white rounded-lg border border-gray-200 px-4 py-3 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-knokspack-dark">{label}</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${configured ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
+                    {configured ? 'Configured' : 'Key missing'}
+                  </span>
+                </div>
+                <p className="text-xs text-knokspack-gray mt-2">{providerHealth?.model || 'Health data unavailable'}</p>
+              </div>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
