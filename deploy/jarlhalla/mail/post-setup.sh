@@ -2,17 +2,27 @@
 set -Eeuo pipefail
 umask 077
 
+if [ "${EUID}" -ne 0 ]; then
+  echo "Run as root: sudo $0" >&2
+  exit 1
+fi
+
 STALWART_URL="${STALWART_URL:-http://127.0.0.1:8088}"
 DOMAIN="${DOMAIN:-jarlhalla.com}"
 MAILBOX="${MAILBOX:-jarle}"
 RECOVERY_FILE="${RECOVERY_FILE:-/root/jarlhalla-mail-recovery.txt}"
 MAILBOX_FILE="${MAILBOX_FILE:-/root/jarlhalla-mailbox-jarle.txt}"
 DNS_FILE="${DNS_FILE:-/root/jarlhalla-mail-dns.txt}"
+CLI_IMAGE="${STALWART_CLI_IMAGE:-stalwartlabs/cli:latest}"
 
-if ! command -v stalwart-cli >/dev/null 2>&1; then
-  echo "stalwart-cli is required." >&2
-  echo "Install from the official Stalwart CLI release before running this script." >&2
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker is required; run bootstrap-mail.sh first." >&2
   exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  apt-get update
+  DEBIAN_FRONTEND=noninteractive apt-get install -y jq
 fi
 
 if [ ! -r "$RECOVERY_FILE" ]; then
@@ -26,14 +36,30 @@ if [ -z "$ADMIN_PASSWORD" ]; then
   exit 1
 fi
 
-CLI=(stalwart-cli --url "$STALWART_URL" --user admin --password "$ADMIN_PASSWORD" --no-color)
+export STALWART_URL
+export STALWART_USER="admin"
+export STALWART_PASSWORD="$ADMIN_PASSWORD"
+export NO_COLOR=1
 
-DOMAIN_ID="$(${CLI[@]} query domain --fields id,name --json \
+stalwart_cli() {
+  docker run --rm --network host \
+    -e STALWART_URL \
+    -e STALWART_USER \
+    -e STALWART_PASSWORD \
+    -e NO_COLOR \
+    "$CLI_IMAGE" "$@"
+}
+
+echo "Checking Stalwart management API..."
+docker pull "$CLI_IMAGE" >/dev/null
+stalwart_cli describe >/dev/null
+
+DOMAIN_ID="$(stalwart_cli query domain --fields id,name --json \
   | jq -r --arg domain "$DOMAIN" 'select(.name == $domain) | .id' \
   | head -n1)"
 
 if [ -z "$DOMAIN_ID" ]; then
-  CREATE_OUTPUT="$(${CLI[@]} create domain \
+  CREATE_OUTPUT="$(stalwart_cli create domain \
     --field "name=$DOMAIN" \
     --field 'aliases={}' \
     --field 'certificateManagement={"@type":"Manual"}' \
@@ -42,7 +68,7 @@ if [ -z "$DOMAIN_ID" ]; then
     --field 'subAddressing={"@type":"Enabled"}')"
   echo "$CREATE_OUTPUT"
 
-  DOMAIN_ID="$(${CLI[@]} query domain --fields id,name --json \
+  DOMAIN_ID="$(stalwart_cli query domain --fields id,name --json \
     | jq -r --arg domain "$DOMAIN" 'select(.name == $domain) | .id' \
     | head -n1)"
 fi
@@ -52,7 +78,7 @@ if [ -z "$DOMAIN_ID" ]; then
   exit 1
 fi
 
-ACCOUNT_ID="$(${CLI[@]} query account --fields id,name,domainId --json \
+ACCOUNT_ID="$(stalwart_cli query account --fields id,name,domainId --json \
   | jq -r --arg name "$MAILBOX" --arg domainId "$DOMAIN_ID" \
     'select(.name == $name and .domainId == $domainId) | .id' \
   | head -n1)"
@@ -60,7 +86,7 @@ ACCOUNT_ID="$(${CLI[@]} query account --fields id,name,domainId --json \
 if [ -z "$ACCOUNT_ID" ]; then
   MAIL_PASSWORD="$(openssl rand -base64 30 | tr -d '\n')"
 
-  ${CLI[@]} create account/user \
+  stalwart_cli create account/user \
     --field "name=$MAILBOX" \
     --field "domainId=$DOMAIN_ID" \
     --field "description=Jarle Taksdal" \
@@ -87,7 +113,7 @@ else
   echo "Mailbox already exists; password was not changed. Account id: $ACCOUNT_ID"
 fi
 
-${CLI[@]} get domain "$DOMAIN_ID" --fields dnsZoneFile --json \
+stalwart_cli get domain "$DOMAIN_ID" --fields dnsZoneFile --json \
   | jq -r '.dnsZoneFile // empty' > "$DNS_FILE"
 chmod 600 "$DNS_FILE"
 
