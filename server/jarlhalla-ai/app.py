@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 app = FastAPI(title="JarlhallaAI", version="1.0.0")
 
 PROVIDER = os.getenv("JARLHALLA_AI_PROVIDER", "openai").strip().lower()
-MODEL = os.getenv("JARLHALLA_AI_MODEL", "gpt-5.6-luna").strip()
+MODEL = os.getenv("JARLHALLA_AI_MODEL", "gpt-5.5").strip()
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1").strip()
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1").strip()
 
@@ -64,10 +64,8 @@ def stream_openai(request: ChatRequest) -> Generator[str, None, None]:
     client = build_client()
     stream = client.responses.create(
         model=MODEL,
-        input=[
-            {"role": "system", "content": build_system_prompt(request)},
-            {"role": "user", "content": request.prompt},
-        ],
+        instructions=build_system_prompt(request),
+        input=request.prompt,
         stream=True,
     )
 
