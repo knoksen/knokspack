@@ -11,6 +11,7 @@ TARGET_DIR="${TARGET_DIR:-/opt/jarlhalla-mail}"
 CREDENTIAL_FILE="${CREDENTIAL_FILE:-/root/jarlhalla-mail-recovery.txt}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PUBLIC_URL="${STALWART_PUBLIC_URL:-https://mail.jarlhalla.com}"
+CONTAINER_NAME="jarlhalla-mail"
 
 install_docker_if_needed() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -40,13 +41,21 @@ install_docker_if_needed
 echo "Docker: $(docker --version)"
 echo "Compose: $(docker compose version)"
 
-for port in 25 465 587 143 993 4190; do
-  if ss -ltn "sport = :$port" | grep -q LISTEN; then
-    echo "Port $port is already in use. Resolve the conflict before installing Stalwart." >&2
-    ss -ltnp "sport = :$port" >&2 || true
-    exit 1
-  fi
-done
+existing_container=0
+if docker ps -a --format '{{.Names}}' | grep -Fxq "$CONTAINER_NAME"; then
+  existing_container=1
+  echo "Existing $CONTAINER_NAME container found; treating this as an idempotent update."
+fi
+
+if [ "$existing_container" -eq 0 ]; then
+  for port in 25 465 587 143 993 4190; do
+    if ss -ltn "sport = :$port" | grep -q LISTEN; then
+      echo "Port $port is already in use. Resolve the conflict before installing Stalwart." >&2
+      ss -ltnp "sport = :$port" >&2 || true
+      exit 1
+    fi
+  done
+fi
 
 mkdir -p "$TARGET_DIR/etc" "$TARGET_DIR/data"
 # Stalwart's official container runs as UID/GID 2000. Bind-mounted config/data
@@ -61,6 +70,7 @@ if [ -f "$TARGET_DIR/.env" ] && grep -q '^STALWART_RECOVERY_ADMIN=' "$TARGET_DIR
   else
     printf '\nSTALWART_PUBLIC_URL=%s\n' "$PUBLIC_URL" >> "$TARGET_DIR/.env"
   fi
+  chmod 600 "$TARGET_DIR/.env"
   echo "Existing Stalwart recovery environment found; recovery credential left unchanged."
 else
   recovery_password="$(openssl rand -hex 24)"
