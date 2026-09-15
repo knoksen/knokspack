@@ -13,10 +13,33 @@ AI_ROOT="${AI_ROOT:-/opt/jarlhalla-ai}"
 AI_USER="${AI_USER:-jarlhalla-ai}"
 PUBLIC_IP="${PUBLIC_IP:-45.132.114.61}"
 CERT_EMAIL="${CERT_EMAIL:-jarle@jarlhalla.no}"
+NODE_MAJOR="${NODE_MAJOR:-22}"
 
 apt-get update
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  nginx apache2-utils python3-venv python3-pip nodejs npm rsync dnsutils certbot python3-certbot-nginx
+  nginx apache2-utils python3-venv python3-pip rsync dnsutils certbot python3-certbot-nginx \
+  ca-certificates curl gnupg
+
+# Ubuntu 24.04's stock Node.js is too old for the current Knokspack/Vite stack.
+# Install a signed NodeSource repository instead of executing a remote setup script.
+install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+  | gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg
+chmod 0644 /etc/apt/keyrings/nodesource.gpg
+cat > /etc/apt/sources.list.d/nodesource.list <<EOF
+deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main
+EOF
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+
+NODE_ACTUAL_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
+if [ "$NODE_ACTUAL_MAJOR" -lt 22 ]; then
+  echo "Node.js 22+ is required; found $(node --version)." >&2
+  exit 1
+fi
+
+echo "Node: $(node --version)"
+echo "npm:  $(npm --version)"
 
 if ! id "$AI_USER" >/dev/null 2>&1; then
   useradd --system --home "$AI_ROOT" --shell /usr/sbin/nologin "$AI_USER"
