@@ -13,13 +13,18 @@ This deployment profile turns Knokspack into a private Jarlhalla operations cons
 
 Use `mail.jarlhalla.com` as the SMTP/IMAP server hostname. Do not use `admin.jarlhalla.com` as the SMTP hostname; keeping the admin UI and mail transport hostname separate avoids TLS, MX and service-discovery conflicts.
 
-## Initial DNS records
+## Safe staged DNS
 
-Create these in the authoritative DNS zone before requesting certificates:
+Create the two host records first:
 
 ```text
 A      admin        45.132.114.61
 A      mail         45.132.114.61
+```
+
+Do **not** publish the MX record until Stalwart, TLS, reverse DNS and outbound TCP/25 have been verified. The final MX is:
+
+```text
 MX     @       10   mail.jarlhalla.com.
 ```
 
@@ -33,9 +38,25 @@ At the VPS provider, configure reverse DNS/PTR:
 
 A working PTR plus outbound TCP/25 are prerequisites for credible direct-to-MX mail delivery.
 
-## 1. WordPress administrator
+## One-command staging
 
-From a checkout of this branch on the Jarlhalla VPS:
+From a checkout of the `jarlhalla-platform` branch on the Jarlhalla VPS:
+
+```bash
+sudo bash deploy/jarlhalla/deploy-platform.sh --all
+```
+
+The orchestrator creates the WordPress administrator, deploys the Knokspack admin portal and JarlhallaAI backend, stages Stalwart, and prepares HTTPS when the required A records already resolve to the VPS. It deliberately never changes public MX automatically.
+
+Individual stages are also available:
+
+```bash
+sudo bash deploy/jarlhalla/deploy-platform.sh --wordpress
+sudo bash deploy/jarlhalla/deploy-platform.sh --admin-ai
+sudo bash deploy/jarlhalla/deploy-platform.sh --mail
+```
+
+## WordPress administrator
 
 ```bash
 sudo bash deploy/jarlhalla/bootstrap-wordpress-admin.sh
@@ -44,7 +65,7 @@ sudo cat /root/jarlhalla-wordpress-admin.txt
 
 The script creates or rotates the dedicated `jarle-admin` WordPress administrator and stores the generated password in a root-only file.
 
-## 2. Admin portal and JarlhallaAI
+## Admin portal and JarlhallaAI
 
 Create the `admin` A record first, then run:
 
@@ -55,7 +76,7 @@ sudo bash deploy/jarlhalla/bootstrap-admin-ai.sh
 The script:
 
 - installs the Python AI backend as `jarlhalla-ai.service` on `127.0.0.1:8787`;
-- builds Knokspack as a standalone Vite application;
+- installs Node.js 22 and builds Knokspack as a standalone Vite application;
 - publishes it to `/var/www/admin.jarlhalla.com`;
 - creates an Nginx Basic Auth gate;
 - proxies `/api/jarlhalla-ai/` to the loopback-only backend;
@@ -67,7 +88,7 @@ Configure the AI provider in `/etc/jarlhalla-ai.env`.
 
 ```text
 JARLHALLA_AI_PROVIDER=openai
-JARLHALLA_AI_MODEL=gpt-5.6-luna
+JARLHALLA_AI_MODEL=gpt-5.5
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_API_KEY=<server-side key>
 ```
@@ -90,9 +111,9 @@ sudo systemctl restart jarlhalla-ai
 curl http://127.0.0.1:8787/health
 ```
 
-## 3. Mail server
+## Mail server
 
-Install Docker Engine and Docker Compose v2 first. Then:
+The mail bootstrap can install Docker Engine and Docker Compose v2 automatically on Ubuntu when they are missing:
 
 ```bash
 sudo bash deploy/jarlhalla/mail/bootstrap-mail.sh
@@ -118,7 +139,7 @@ sudo cat /root/jarlhalla-mail-dns.txt
 
 Copy the generated DNS records from `/root/jarlhalla-mail-dns.txt` into the authoritative DNS zone. The Stalwart-generated values, especially DKIM selectors and keys, must be copied exactly.
 
-## 4. TLS for SMTP/IMAP
+## TLS for SMTP/IMAP
 
 Nginx/Certbot handles HTTPS for the management endpoint. Stalwart must also be configured to use a certificate covering `mail.jarlhalla.com` for SMTP submission and IMAP TLS. The Docker container mounts `/etc/letsencrypt` read-only so a Stalwart Certificate object can reference the Certbot files. After renewal, trigger Stalwart's TLS certificate reload or restart the mail container with a Certbot deploy hook.
 
