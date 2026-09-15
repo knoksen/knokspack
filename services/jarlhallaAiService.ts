@@ -1,14 +1,24 @@
+export type JarlhallaAiProvider = 'openai' | 'anthropic' | 'ollama';
+
 export interface JarlhallaAiRequest {
   prompt: string;
   mode?: 'chat' | 'wordpress' | 'seo' | 'operations';
+  provider?: JarlhallaAiProvider;
+  model?: string;
   tone?: string;
   context?: string;
 }
 
+export interface JarlhallaAiProviderHealth {
+  configured: boolean;
+  model: string;
+}
+
 export interface JarlhallaAiHealth {
   status: string;
-  provider: string;
+  provider: JarlhallaAiProvider;
   model: string;
+  providers: Record<JarlhallaAiProvider, JarlhallaAiProviderHealth>;
 }
 
 export async function getJarlhallaAiHealth(): Promise<JarlhallaAiHealth> {
