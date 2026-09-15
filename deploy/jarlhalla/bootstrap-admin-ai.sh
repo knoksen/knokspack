@@ -12,7 +12,7 @@ ADMIN_ROOT="${ADMIN_ROOT:-/var/www/admin.jarlhalla.com}"
 AI_ROOT="${AI_ROOT:-/opt/jarlhalla-ai}"
 AI_USER="${AI_USER:-jarlhalla-ai}"
 PUBLIC_IP="${PUBLIC_IP:-45.132.114.61}"
-CERT_EMAIL="${CERT_EMAIL:-jarle@jarlhalla.no}"
+CERT_EMAIL="${CERT_EMAIL:-jarle@jarlhalla.com}"
 NODE_MAJOR="${NODE_MAJOR:-22}"
 
 apt-get update
@@ -56,7 +56,7 @@ chown -R "$AI_USER:$AI_USER" "$AI_ROOT"
 if [ ! -f /etc/jarlhalla-ai.env ]; then
   cp "$REPO_ROOT/deploy/jarlhalla/jarlhalla-ai.env.example" /etc/jarlhalla-ai.env
   chmod 600 /etc/jarlhalla-ai.env
-  echo "Created /etc/jarlhalla-ai.env. Add an OpenAI key or switch to Ollama before using chat."
+  echo "Created /etc/jarlhalla-ai.env. Add an OpenAI or Anthropic API key, or use Ollama, before using chat."
 fi
 
 cp "$REPO_ROOT/deploy/jarlhalla/jarlhalla-ai.service" /etc/systemd/system/jarlhalla-ai.service
@@ -105,4 +105,5 @@ echo
 echo "Admin deployment complete."
 echo "Portal: https://$ADMIN_DOMAIN/#/jarlhalla-ai (after DNS/TLS)"
 echo "AI env: /etc/jarlhalla-ai.env"
+echo "AI providers: OpenAI, Anthropic Claude, Ollama"
 echo "WordPress: https://jarlhalla.com/wp-admin/"
