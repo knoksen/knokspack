@@ -3,6 +3,7 @@ import {
   getJarlhallaAiHealth,
   streamJarlhallaAi,
   type JarlhallaAiHealth,
+  type JarlhallaAiProvider,
 } from '../../services/jarlhallaAiService';
 
 const MODES = [
@@ -12,26 +13,38 @@ const MODES = [
   ['operations', 'Operations'],
 ] as const;
 
+const PROVIDERS: Array<[JarlhallaAiProvider, string]> = [
+  ['openai', 'OpenAI'],
+  ['anthropic', 'Claude'],
+  ['ollama', 'Ollama'],
+];
+
 type Mode = (typeof MODES)[number][0];
 
 const JarlhallaAIPage: React.FC = () => {
   const [prompt, setPrompt] = useState('');
   const [output, setOutput] = useState('');
   const [mode, setMode] = useState<Mode>('chat');
+  const [provider, setProvider] = useState<JarlhallaAiProvider>('openai');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [health, setHealth] = useState<JarlhallaAiHealth | null>(null);
 
   useEffect(() => {
     getJarlhallaAiHealth()
-      .then(setHealth)
+      .then((result) => {
+        setHealth(result);
+        setProvider(result.provider);
+      })
       .catch(() => setHealth(null));
   }, []);
 
   const statusText = useMemo(() => {
     if (!health) return 'Backend unavailable';
-    return `${health.provider} · ${health.model}`;
-  }, [health]);
+    const selected = health.providers?.[provider];
+    if (!selected) return `${health.provider} · ${health.model}`;
+    return `${provider === 'anthropic' ? 'Claude' : provider} · ${selected.model}${selected.configured ? '' : ' · key missing'}`;
+  }, [health, provider]);
 
   const generate = async () => {
     const cleanPrompt = prompt.trim();
@@ -45,6 +58,7 @@ const JarlhallaAIPage: React.FC = () => {
       for await (const chunk of streamJarlhallaAi({
         prompt: cleanPrompt,
         mode,
+        provider,
         tone: 'professional, concise and technically precise',
       })) {
         setOutput((previous) => previous + chunk);
@@ -63,7 +77,7 @@ const JarlhallaAIPage: React.FC = () => {
           <div>
             <p className="text-sm uppercase tracking-widest text-knokspack-primary font-semibold">Jarlhalla Control Plane</p>
             <h1 className="text-4xl font-bold text-knokspack-dark mt-1">JarlhallaAI</h1>
-            <p className="text-knokspack-gray mt-2">Private AI workspace for publishing, WordPress, SEO and site operations.</p>
+            <p className="text-knokspack-gray mt-2">Private AI workspace with OpenAI, Claude and Ollama for publishing, WordPress, SEO and site operations.</p>
           </div>
           <div className="flex flex-wrap gap-3">
             <a
@@ -93,6 +107,23 @@ const JarlhallaAIPage: React.FC = () => {
                 {statusText}
               </span>
             </div>
+
+            <label className="block text-sm font-medium text-knokspack-dark mb-2" htmlFor="jarlhalla-provider">
+              AI provider
+            </label>
+            <select
+              id="jarlhalla-provider"
+              value={provider}
+              onChange={(event) => setProvider(event.target.value as JarlhallaAiProvider)}
+              disabled={isLoading}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 mb-5 bg-white"
+            >
+              {PROVIDERS.map(([value, label]) => {
+                const providerHealth = health?.providers?.[value];
+                const suffix = providerHealth && !providerHealth.configured && value !== 'ollama' ? ' — API key missing' : '';
+                return <option key={value} value={value}>{label}{suffix}</option>;
+              })}
+            </select>
 
             <label className="block text-sm font-medium text-knokspack-dark mb-2" htmlFor="jarlhalla-mode">
               Workspace
@@ -134,7 +165,7 @@ const JarlhallaAIPage: React.FC = () => {
               disabled={isLoading || !prompt.trim()}
               className="mt-5 w-full bg-knokspack-primary text-white font-semibold py-3 px-4 rounded-md hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'JarlhallaAI is working…' : 'Run'}
+              {isLoading ? 'JarlhallaAI is working…' : `Run with ${provider === 'anthropic' ? 'Claude' : provider === 'openai' ? 'OpenAI' : 'Ollama'}`}
             </button>
           </section>
 
