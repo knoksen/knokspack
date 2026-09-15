@@ -9,7 +9,7 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="JarlhallaAI", version="1.1.1")
+app = FastAPI(title="JarlhallaAI", version="1.1.2")
 
 Provider = Literal["openai", "anthropic", "ollama"]
 
@@ -69,11 +69,19 @@ def resolve_model(provider: Provider, request: ChatRequest) -> str:
     return (request.model or default_model(provider)).strip()
 
 
-def build_openai_client() -> OpenAI:
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
+def validate_provider_config(provider: Provider) -> None:
+    if provider == "openai" and not os.getenv("OPENAI_API_KEY", "").strip():
         raise RuntimeError("OPENAI_API_KEY is not configured")
-    return OpenAI(api_key=api_key, base_url=OPENAI_BASE_URL)
+    if provider == "anthropic" and not os.getenv("ANTHROPIC_API_KEY", "").strip():
+        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
+
+
+def build_openai_client() -> OpenAI:
+    validate_provider_config("openai")
+    return OpenAI(
+        api_key=os.environ["OPENAI_API_KEY"].strip(),
+        base_url=OPENAI_BASE_URL,
+    )
 
 
 def build_ollama_client() -> OpenAI:
@@ -84,10 +92,8 @@ def build_ollama_client() -> OpenAI:
 
 
 def build_anthropic_client() -> Anthropic:
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not configured")
-    return Anthropic(api_key=api_key)
+    validate_provider_config("anthropic")
+    return Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"].strip())
 
 
 def build_system_prompt(request: ChatRequest) -> str:
@@ -176,6 +182,7 @@ def chat(request: ChatRequest) -> StreamingResponse:
     try:
         provider = resolve_provider(request)
         model = resolve_model(provider, request)
+        validate_provider_config(provider)
 
         if provider == "ollama":
             generator = stream_ollama(request, model)
