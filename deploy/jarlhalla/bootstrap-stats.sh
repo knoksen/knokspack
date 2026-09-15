@@ -38,7 +38,9 @@ PY
       VHOST="$resolved"
       break
     fi
-  done < <(find /etc/nginx/sites-enabled -maxdepth 1 -type f -o -type l 2>/dev/null | sort)
+  done < <(find /etc/nginx/sites-enabled -maxdepth 1 \( -type f -o -type l \) 2>/dev/null | sort)
+else
+  VHOST="$(readlink -f "$VHOST")"
 fi
 
 if [ -z "$VHOST" ] || [ ! -f "$VHOST" ]; then
@@ -86,8 +88,11 @@ PY
 
 nginx -t
 systemctl reload nginx
-install -o www-data -g adm -m 0640 /dev/null "$ACCESS_LOG" 2>/dev/null || touch "$ACCESS_LOG"
-touch "$ERROR_LOG"
+
+# Never truncate existing logs. Create them only when absent.
+touch "$ACCESS_LOG" "$ERROR_LOG"
+chown www-data:adm "$ACCESS_LOG" "$ERROR_LOG" 2>/dev/null || true
+chmod 0640 "$ACCESS_LOG" "$ERROR_LOG" 2>/dev/null || true
 
 install -d -o www-data -g www-data -m 0755 "$AWOUT" "$AWOUT/icon" "$WEBOUT"
 
