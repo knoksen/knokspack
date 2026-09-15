@@ -10,6 +10,7 @@ fi
 TARGET_DIR="${TARGET_DIR:-/opt/jarlhalla-mail}"
 CREDENTIAL_FILE="${CREDENTIAL_FILE:-/root/jarlhalla-mail-recovery.txt}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUBLIC_URL="${STALWART_PUBLIC_URL:-https://mail.jarlhalla.com}"
 
 install_docker_if_needed() {
   if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -48,14 +49,24 @@ for port in 25 465 587 143 993 4190; do
 done
 
 mkdir -p "$TARGET_DIR/etc" "$TARGET_DIR/data"
+# Stalwart's official container runs as UID/GID 2000. Bind-mounted config/data
+# directories must therefore be writable by that account.
+chown -R 2000:2000 "$TARGET_DIR/etc" "$TARGET_DIR/data"
+chmod 750 "$TARGET_DIR/etc" "$TARGET_DIR/data"
 cp "$SCRIPT_DIR/docker-compose.yml" "$TARGET_DIR/docker-compose.yml"
 
 if [ -f "$TARGET_DIR/.env" ] && grep -q '^STALWART_RECOVERY_ADMIN=' "$TARGET_DIR/.env"; then
-  echo "Existing Stalwart recovery environment found; leaving it unchanged."
+  if grep -q '^STALWART_PUBLIC_URL=' "$TARGET_DIR/.env"; then
+    sed -i "s|^STALWART_PUBLIC_URL=.*|STALWART_PUBLIC_URL=$PUBLIC_URL|" "$TARGET_DIR/.env"
+  else
+    printf '\nSTALWART_PUBLIC_URL=%s\n' "$PUBLIC_URL" >> "$TARGET_DIR/.env"
+  fi
+  echo "Existing Stalwart recovery environment found; recovery credential left unchanged."
 else
   recovery_password="$(openssl rand -hex 24)"
   cat > "$TARGET_DIR/.env" <<EOF
 STALWART_RECOVERY_ADMIN=admin:${recovery_password}
+STALWART_PUBLIC_URL=${PUBLIC_URL}
 EOF
   chmod 600 "$TARGET_DIR/.env"
 
@@ -63,6 +74,7 @@ EOF
 Jarlhalla Stalwart recovery administrator
 Generated: $(date -Is)
 Local admin URL: http://127.0.0.1:8088/admin
+Public URL after proxy/TLS: ${PUBLIC_URL}/admin
 Username: admin
 Password: ${recovery_password}
 
