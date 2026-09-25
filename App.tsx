@@ -3,6 +3,7 @@ import React, { useContext } from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import DemoNotice from './components/DemoNotice';
 import HomePage from './components/pages/HomePage';
 import PricingPage from './components/pages/PricingPage';
 import AIAssistantPage from './components/AIAssistant/AIAssistantPage';
@@ -46,6 +47,7 @@ function App(): React.ReactNode {
     <HashRouter>
       <div className="flex flex-col min-h-screen font-sans">
         <Header />
+        <DemoNotice />
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<RedirectToDashboard />} />

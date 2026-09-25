@@ -2,7 +2,6 @@
 import React, { useState, useCallback } from 'react';
 import { generateContentStream } from '../../services/geminiService';
 import Button from '../Button';
-import type { GenerateContentResponse } from '@google/genai';
 
 const LoadingSpinner: React.FC = () => (
     <div className="flex items-center justify-center space-x-2">

@@ -9,11 +9,10 @@
     "preview": "vite preview",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "package": "bash scripts/package.sh"
   },
   "dependencies": {
-    "@google/genai": "^2.10.0",
-    "@google/generative-ai": "^0.24.1",
     "chart.js": "^4.4.1",
     "date-fns": "^4.4.0",
     "react": "^19.2.7",
@@ -22,10 +21,10 @@
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.1",
-    "@tailwindcss/postcss": "^4.3.2",
     "@types/jest": "^30.0.0",
     "@types/node": "^22.18.0",
     "@vitejs/plugin-react": "^5.0.2",

@@ -5,8 +5,9 @@ class Knokspack_Backup {
     private $options;
 
     public function __construct() {
-        $this->options = get_option('knokspack_backup_settings', array(
+        $this->options = wp_parse_args((array) get_option('knokspack_backup_settings', array()), array(
             'backup_path' => WP_CONTENT_DIR . '/backups/knokspack',
+            'schedule_enabled' => false, // opt-in: full backups use disk space
             'frequency' => 'daily',
             'retention_days' => 30,
             'exclude_paths' => array(
@@ -14,7 +15,7 @@ class Knokspack_Backup {
                 'wp-content/backups',
                 'wp-content/uploads/large-files'
             )
-        ));
+        ), array());
 
         // Initialize backup system
         add_action('init', array($this, 'init_backup'));
@@ -24,17 +25,51 @@ class Knokspack_Backup {
     }
 
     public function init_backup() {
-        if (!wp_next_scheduled('knokspack_scheduled_backup')) {
-            wp_schedule_event(time(), $this->options['frequency'], 'knokspack_scheduled_backup');
+        if (!empty($this->options['schedule_enabled'])) {
+            if (!wp_next_scheduled('knokspack_scheduled_backup')) {
+                wp_schedule_event(time(), $this->options['frequency'], 'knokspack_scheduled_backup');
+            }
+        } elseif (wp_next_scheduled('knokspack_scheduled_backup')) {
+            wp_clear_scheduled_hook('knokspack_scheduled_backup');
         }
         add_action('knokspack_scheduled_backup', array($this, 'create_scheduled_backup'));
+    }
+
+    public function create_scheduled_backup() {
+        return $this->create_backup('full');
+    }
+
+    /** Backups contain the database; make sure the web server never serves them. */
+    private function protect_dir($dir) {
+        wp_mkdir_p($dir);
+        $files = array(
+            '.htaccess'  => "Require all denied\nDeny from all\n",
+            'web.config' => '<?xml version="1.0"?><configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>',
+            'index.php'  => "<?php // Silence is golden.\n",
+        );
+        foreach ($files as $name => $content) {
+            if (!file_exists($dir . '/' . $name)) {
+                @file_put_contents($dir . '/' . $name, $content);
+            }
+        }
+    }
+
+    public function list_backups($limit = 20) {
+        global $wpdb;
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT id, type, size, status, created_at FROM {$wpdb->prefix}knokspack_backups ORDER BY created_at DESC LIMIT %d",
+            $limit
+        ), ARRAY_A);
     }
 
     public function create_backup($type = 'full') {
         global $wpdb;
         
         $backup_id = time();
-        $backup_dir = $this->options['backup_path'] . '/' . $backup_id;
+        $this->protect_dir($this->options['backup_path']);
+        // A random part in the name means a backup URL cannot be guessed even
+        // on servers that ignore .htaccess (e.g. nginx).
+        $backup_dir = $this->options['backup_path'] . '/' . $backup_id . '-' . wp_generate_password(16, false);
         
         if (!wp_mkdir_p($backup_dir)) {
             return new WP_Error('backup_error', 'Could not create backup directory');
@@ -46,6 +81,8 @@ class Knokspack_Backup {
             array(
                 'id' => $backup_id,
                 'type' => $type,
+                'file_path' => '',
+                'size' => 0,
                 'status' => 'in_progress',
                 'created_at' => current_time('mysql')
             )
@@ -75,7 +112,7 @@ class Knokspack_Backup {
 
             // Create ZIP archive
             $zip = new ZipArchive();
-            $zip_file = $this->options['backup_path'] . '/' . $backup_id . '.zip';
+            $zip_file = $backup_dir . '.zip';
             
             if ($zip->open($zip_file, ZipArchive::CREATE) === TRUE) {
                 $this->add_dir_to_zip($zip, $backup_dir, basename($backup_dir));
@@ -128,15 +165,23 @@ class Knokspack_Backup {
             
             // Table structure
             $create_table = $wpdb->get_row("SHOW CREATE TABLE `$table_name`", ARRAY_N);
-            fwrite($handle, "\n\n" . $create_table[1] . ";\n\n");
-
-            // Table data
-            $rows = $wpdb->get_results("SELECT * FROM `$table_name`", ARRAY_A);
-            foreach ($rows as $row) {
-                $values = array_map(array($wpdb, '_real_escape'), $row);
-                $values = implode("', '", $values);
-                fwrite($handle, "INSERT INTO `$table_name` VALUES ('$values');\n");
+            if (empty($create_table[1])) {
+                continue;
             }
+            fwrite($handle, "\n\nDROP TABLE IF EXISTS `$table_name`;\n" . $create_table[1] . ";\n\n");
+
+            // Table data, in pages so large tables do not exhaust memory
+            $offset = 0;
+            do {
+                $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM `$table_name` LIMIT %d OFFSET %d", 500, $offset), ARRAY_A);
+                foreach ($rows as $row) {
+                    $values = array_map(function ($v) use ($wpdb) {
+                        return $v === null ? 'NULL' : "'" . $wpdb->_real_escape($v) . "'";
+                    }, $row);
+                    fwrite($handle, "INSERT INTO `$table_name` VALUES (" . implode(', ', $values) . ");\n");
+                }
+                $offset += 500;
+            } while (count($rows) === 500);
         }
 
         fclose($handle);
@@ -358,4 +403,4 @@ class Knokspack_Backup {
 }
 
 // Initialize the backup module
-new Knokspack_Backup();
+$GLOBALS['knokspack_backup'] = new Knokspack_Backup();
