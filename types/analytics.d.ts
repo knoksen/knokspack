@@ -2,9 +2,14 @@ declare global {
     interface Window {
         knokspackData: {
             ajaxUrl: string;
+            restUrl: string;
+            /** wp_rest nonce, sent as X-WP-Nonce */
             nonce: string;
             pluginUrl: string;
             version: string;
+            aiConfigured: boolean;
+            settingsUrl: string;
+            user: { id: number; name: string; email: string };
         }
     }
 }

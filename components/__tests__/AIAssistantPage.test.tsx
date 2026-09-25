@@ -202,7 +202,3 @@ describe('AIAssistantPage', () => {
   });
 });
 
-<?php
-// The plugin should be installed in wp-content/plugins/knokspack/
-// Main file: wp-site-suite.php
-// Verify plugin is showing up in WordPress admin

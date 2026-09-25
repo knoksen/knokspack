@@ -1,11 +1,32 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { UserContext } from '../../contexts/UserContext';
 import Button from '../Button';
 import Modal from '../common/Modal';
-import { ShieldIcon, ZapIcon, NewsletterIcon, ChartBarIcon, MOCK_ACTIVITY_FEED, BullhornIcon, RocketLaunchIcon, MobileIcon, ArchiveBoxIcon, SearchIcon } from '../../constants';
-import type { ActivityFeedItem } from '../../types';
+import { ShieldIcon, ZapIcon, ChartBarIcon, ArchiveBoxIcon, SearchIcon } from '../../constants';
+import { apiFetch, wpData } from '../../services/wpApi';
+
+type Overview = {
+    stats: { views30: number; visitors30: number };
+    security: { blockedIps: number; lastScan: string | null; malware: number; changed: number };
+    backups: { type: string; size: number; status: string; created_at: string }[];
+    activity: { action: string; details: Record<string, string> | null; created_at: string }[];
+    ai: { configured: boolean };
+};
+type ScanResult = { time: string; malware: string[]; changed: string[] };
+
+const ACTION_LABELS: Record<string, string> = {
+    login: 'Signed in',
+    failed_login: 'Failed login',
+    blocked_request: 'Request blocked by firewall',
+};
+
+const fmtDate = (value: string | null) => {
+    if (!value) return 'never';
+    const d = new Date(value.includes('T') ? value : value.replace(' ', 'T') + 'Z');
+    return isNaN(d.getTime()) ? value : d.toLocaleString();
+};
 
 const OverviewCard: React.FC<{ title: string, value: string, link: string, icon: React.ReactNode }> = ({ title, value, link, icon }) => (
     <NavLink to={link} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all duration-300 flex flex-col justify-between">
@@ -28,24 +49,18 @@ const QuickActionButton: React.FC<{ children: React.ReactNode, onClick?: () => v
     return href ? <NavLink to={href}>{content}</NavLink> : content;
 };
 
-const ActivityItem: React.FC<{ item: ActivityFeedItem }> = ({ item }) => {
-    const categoryColors = {
-        Security: 'bg-red-100 text-red-800',
-        Social: 'bg-blue-100 text-blue-800',
-        System: 'bg-gray-100 text-gray-800',
-        Newsletter: 'bg-indigo-100 text-indigo-800',
-        Performance: 'bg-green-100 text-green-800'
-    };
+const ActivityItem: React.FC<{ item: Overview['activity'][number] }> = ({ item }) => {
+    const details = item.details ? Object.entries(item.details).map(([k, v]) => `${k}: ${v}`).join(' · ') : '';
     return (
         <li className="flex items-center gap-4 py-4">
-            <div className={`p-2 rounded-full ${categoryColors[item.category]}`}>
-                {item.icon}
+            <div className={`p-2 rounded-full ${item.action === 'login' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                <ShieldIcon />
             </div>
             <div className="flex-grow">
-                <p className="font-semibold text-knokspack-dark">{item.action}</p>
-                <p className="text-sm text-knokspack-gray">{item.details}</p>
+                <p className="font-semibold text-knokspack-dark">{ACTION_LABELS[item.action] || item.action}</p>
+                <p className="text-sm text-knokspack-gray">{details}</p>
             </div>
-            <p className="text-sm text-gray-400 whitespace-nowrap">{item.timestamp}</p>
+            <p className="text-sm text-gray-400 whitespace-nowrap">{fmtDate(item.created_at)}</p>
         </li>
     );
 };
@@ -55,13 +70,30 @@ const DashboardPage: React.FC = () => {
     const { user } = useContext(UserContext);
     const [isScanning, setIsScanning] = useState(false);
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+    const [overview, setOverview] = useState<Overview | null>(null);
+    const [error, setError] = useState('');
+    const [scan, setScan] = useState<ScanResult | null>(null);
 
-    const handleScan = () => {
+    const load = () => apiFetch<Overview>('overview').then(setOverview).catch((e: Error) => setError(e.message));
+    useEffect(() => { if (wpData()) load(); }, []);
+
+    const handleScan = async () => {
         setIsScanning(true);
-        setTimeout(() => {
+        setError('');
+        try {
+            setScan(await apiFetch<ScanResult>('scan', {}));
+            await load();
+        } catch (e) {
+            setError(e instanceof Error ? e.message : 'Scan failed');
+        } finally {
             setIsScanning(false);
-        }, 2500);
+        }
     };
+
+    const sec = overview?.security;
+    const securityValue = !overview ? '…' : sec!.malware > 0 ? `${sec!.malware} issue${sec!.malware === 1 ? '' : 's'}` : sec!.lastScan ? 'Clean' : 'Not scanned';
+    const lastBackup = overview?.backups.find(b => b.status === 'completed');
+    const n = (v: number) => v >= 10000 ? `${Math.round(v / 1000)}k` : v.toLocaleString();
 
     return (
         <div className="py-20 md:py-24 bg-knokspack-light-gray">
@@ -77,14 +109,26 @@ const DashboardPage: React.FC = () => {
                 
                 {/* Overview Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-6 mb-12">
-                    <OverviewCard title="Security" value="Secure" link="/security" icon={<ShieldIcon />} />
-                    <OverviewCard title="Performance" value="Fast" link="/performance" icon={<ZapIcon />} />
-                    <OverviewCard title="Backups" value="Safe" link="/backup" icon={<ArchiveBoxIcon />} />
-                    <OverviewCard title="Search" value="Indexed" link="/search" icon={<SearchIcon />} />
-                    <OverviewCard title="Growth Tools" value="Active" link="/growth" icon={<RocketLaunchIcon />} />
-                    <OverviewCard title="Analytics" value="48k" link="/analytics" icon={<ChartBarIcon />} />
-                    <OverviewCard title="Mobile App" value="Ready" link="/mobile" icon={<MobileIcon />} />
+                    <OverviewCard title="Security" value={securityValue} link="/security" icon={<ShieldIcon />} />
+                    <OverviewCard title="Blocked IPs" value={overview ? String(sec!.blockedIps) : '…'} link="/security/blocked-ips" icon={<ShieldIcon />} />
+                    <OverviewCard title="Page views (30 d)" value={overview ? n(overview.stats.views30) : '…'} link="/analytics" icon={<ChartBarIcon />} />
+                    <OverviewCard title="Visitors (30 d)" value={overview ? n(overview.stats.visitors30) : '…'} link="/analytics" icon={<ChartBarIcon />} />
+                    <OverviewCard title="Last backup" value={!overview ? '…' : lastBackup ? new Date(lastBackup.created_at.replace(' ', 'T')).toLocaleDateString() : 'None'} link="/backup" icon={<ArchiveBoxIcon />} />
+                    <OverviewCard title="AI assistant" value={!overview ? '…' : overview.ai.configured ? 'Ready' : 'Set up'} link="/ai-assistant" icon={<ZapIcon />} />
+                    <OverviewCard title="Search" value="REST" link="/search" icon={<SearchIcon />} />
                 </div>
+                {error && <p className="mb-8 rounded-lg bg-red-50 p-4 text-red-800">{error}</p>}
+                {overview && !overview.ai.configured && wpData() && (
+                    <p className="mb-8 rounded-lg bg-yellow-50 p-4 text-yellow-900">
+                        The AI assistant needs an API key. <a className="underline" href={wpData()!.settingsUrl}>Open Knokspack settings</a>.
+                    </p>
+                )}
+                {scan && (
+                    <div className="mb-8 rounded-lg bg-white p-4 shadow-md">
+                        <p className="font-semibold">Scan finished {fmtDate(scan.time)}: {scan.malware.length} suspicious file(s), {scan.changed.length} changed since last scan.</p>
+                        {scan.malware.length > 0 && <ul className="mt-2 list-disc pl-6 text-sm text-red-800">{scan.malware.slice(0, 20).map(f => <li key={f}>{f}</li>)}</ul>}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     {/* Quick Actions */}
@@ -95,8 +139,7 @@ const DashboardPage: React.FC = () => {
                             <QuickActionButton onClick={handleScan} disabled={isScanning}>
                                 {isScanning ? 'Scanning...' : 'Scan Site Now'}
                             </QuickActionButton>
-                            <QuickActionButton href="/promotion">Manage Promotions</QuickActionButton>
-                             <QuickActionButton href="/crm">Add a Contact</QuickActionButton>
+                            <QuickActionButton onClick={() => { window.location.href = wpData()?.settingsUrl || '#'; }}>Settings</QuickActionButton>
                         </div>
                     </div>
 
@@ -105,8 +148,9 @@ const DashboardPage: React.FC = () => {
                         <h2 className="text-2xl font-bold text-knokspack-dark mb-4">Recent Activity</h2>
                         <div className="bg-white rounded-lg shadow-md">
                             <ul className="divide-y divide-gray-200 px-6">
-                                {MOCK_ACTIVITY_FEED.slice(0, 5).map(item => (
-                                    <ActivityItem key={item.id} item={item} />
+                                {overview?.activity.length === 0 && <li className="py-6 text-knokspack-gray">No activity logged yet. Logins and blocked requests will appear here.</li>}
+                                {overview?.activity.slice(0, 5).map((item, i) => (
+                                    <ActivityItem key={i} item={item} />
                                 ))}
                             </ul>
                             <div className="p-4 text-center border-t border-gray-100">
@@ -120,8 +164,8 @@ const DashboardPage: React.FC = () => {
              <Modal isOpen={isActivityModalOpen} onClose={() => setIsActivityModalOpen(false)} title="Full Activity Log">
                 <div className="bg-white rounded-lg">
                     <ul className="divide-y divide-gray-200 -mt-6 -mx-6">
-                        {MOCK_ACTIVITY_FEED.map(item => (
-                            <ActivityItem key={item.id} item={item} />
+                        {overview?.activity.map((item, i) => (
+                            <ActivityItem key={i} item={item} />
                         ))}
                     </ul>
                 </div>
