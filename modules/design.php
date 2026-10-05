@@ -222,11 +222,11 @@ class Knokspack_Design {
         }
 
         // Add design page template here
-        include WPSS_PATH . 'templates/design-settings.php';
+        include KNOKSPACK_PATH . 'templates/design-settings.php';
     }
 
     public function ajax_save_design() {
-        check_ajax_referer('wpss_design_nonce');
+        check_ajax_referer('knokspack_design_nonce');
 
         if (!current_user_can('manage_options')) {
             wp_send_json_error('Insufficient permissions');
@@ -234,12 +234,16 @@ class Knokspack_Design {
 
         $settings = array();
 
+        // kses would mangle CSS selectors and JavaScript, so raw code is only
+        // accepted from users who may post unfiltered HTML anyway.
+        $raw_allowed = current_user_can('unfiltered_html');
         if (isset($_POST['custom_css'])) {
-            $settings['custom_css'] = wp_kses_post($_POST['custom_css']);
+            $css = wp_unslash($_POST['custom_css']);
+            $settings['custom_css'] = str_ireplace('</style', '', $raw_allowed ? $css : wp_strip_all_tags($css));
         }
 
         if (isset($_POST['custom_js'])) {
-            $settings['custom_js'] = wp_kses_post($_POST['custom_js']);
+            $settings['custom_js'] = $raw_allowed ? str_ireplace('</script', '', wp_unslash($_POST['custom_js'])) : '';
         }
 
         if (isset($_POST['custom_fonts'])) {
@@ -254,11 +258,11 @@ class Knokspack_Design {
             }
         }
 
-        update_option('wpss_design_settings', array_merge($this->options, $settings));
+        update_option('knokspack_design_settings', array_merge($this->options, $settings));
 
         wp_send_json_success('Design settings saved successfully');
     }
 }
 
 // Initialize the design module
-new WPSS_Design();
+new Knokspack_Design();

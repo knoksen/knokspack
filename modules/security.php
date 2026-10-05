@@ -4,25 +4,22 @@ if (!defined('ABSPATH')) exit;
 class Knokspack_Security {
     private $options;
     private $blocked_ips = array();
+    private $file_hashes = array();
 
     public function __construct() {
-        $this->options = get_option('knokspack_security_settings', array(
-            'firewall_enabled' => true,
-            'brute_force_protection' => true,
-            'max_login_attempts' => 5,
-            'lockout_duration' => 1800, // 30 minutes
-            'scan_frequency' => 'daily',
-            'scan_directories' => array('plugins', 'themes', 'uploads'),
-            'email_notifications' => true
-        ));
+        $this->options = wp_parse_args(
+            (array) get_option('knokspack_security_settings', array()),
+            Knokspack_Settings_Defaults::security()
+        );
 
-        $this->blocked_ips = get_option('knokspack_blocked_ips', array());
+        $this->blocked_ips = (array) get_option('knokspack_blocked_ips', array());
 
         // Initialize security features
         add_action('init', array($this, 'init_security'));
         add_action('wp_login_failed', array($this, 'handle_failed_login'));
         add_action('wp_login', array($this, 'handle_successful_login'), 10, 2);
         add_action('admin_init', array($this, 'schedule_scans'));
+        add_action('knokspack_security_scan', array($this, 'run_security_scan'));
         
         // Add AJAX handlers
         add_action('wp_ajax_knokspack_run_security_scan', array($this, 'ajax_run_security_scan'));
@@ -34,18 +31,26 @@ class Knokspack_Security {
             $this->check_firewall_rules();
         }
 
-        if ($this->options['brute_force_protection']) {
+        // A lockout only covers the login endpoints, so visitors who share
+        // an IP address (office, school, mobile carrier) can still read the site.
+        $is_login = (isset($GLOBALS['pagenow']) && $GLOBALS['pagenow'] === 'wp-login.php')
+            || (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST);
+        if ($this->options['brute_force_protection'] && $is_login) {
             $this->check_ip_block();
         }
     }
 
     public function check_firewall_rules() {
         $rules = array(
-            'REQUEST_METHOD' => array('TRACE', 'TRACK', 'OPTIONS'),
+            'REQUEST_METHOD' => array('^TRACE$', '^TRACK$'),
             'QUERY_STRING' => array('eval\(', 'UNION.+SELECT', 'base64_', '(\<|%3C).*script.*(\>|%3E)'),
             'REQUEST_URI' => array('wp-config.php', 'wp-admin/install.php', 'wp-admin/setup-config.php'),
-            'HTTP_USER_AGENT' => array('libwww-perl', '^$')
+            'HTTP_USER_AGENT' => array('libwww-perl')
         );
+        // Signed-in administrators are never blocked by the pattern firewall.
+        if (function_exists('current_user_can') && is_user_logged_in() && current_user_can('manage_options')) {
+            return;
+        }
 
         foreach ($rules as $var => $patterns) {
             if (isset($_SERVER[$var])) {
@@ -61,7 +66,8 @@ class Knokspack_Security {
 
     public function check_ip_block() {
         $ip = $this->get_client_ip();
-        if (isset($this->blocked_ips[$ip])) {
+        // Entries without an expiry are only counting failed attempts.
+        if (isset($this->blocked_ips[$ip]) && !empty($this->blocked_ips[$ip]['expires'])) {
             $block = $this->blocked_ips[$ip];
             if ($block['expires'] > time()) {
                 wp_die(
@@ -82,6 +88,18 @@ class Knokspack_Security {
     public function handle_failed_login($username) {
         $ip = $this->get_client_ip();
         
+        if (!$ip) {
+            return;
+        }
+        // Start a fresh count when the previous attempts are old or an earlier lockout has ended.
+        if (isset($this->blocked_ips[$ip])) {
+            $entry = $this->blocked_ips[$ip];
+            $stale = time() - (int) $entry['first_attempt'] > (int) $this->options['lockout_duration'];
+            $ended = $entry['expires'] && $entry['expires'] <= time();
+            if ($stale || $ended) {
+                unset($this->blocked_ips[$ip]);
+            }
+        }
         if (!isset($this->blocked_ips[$ip])) {
             $this->blocked_ips[$ip] = array(
                 'attempts' => 1,
@@ -99,20 +117,49 @@ class Knokspack_Security {
             }
         }
 
-        update_option('wpss_blocked_ips', $this->blocked_ips);
+        update_option('knokspack_blocked_ips', $this->blocked_ips, false);
         $this->log_failed_login($username, $ip);
     }
 
     private function get_client_ip() {
-        $ip = '';
-        if (isset($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
-            $ip = $_SERVER['REMOTE_ADDR'];
+        // Proxy headers can be forged by anyone, so they are only used when
+        // the admin says the site sits behind a trusted proxy/CDN.
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+        if (!empty($this->options['trust_proxy_headers']) && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            $parts = explode(',', (string) $_SERVER['HTTP_X_FORWARDED_FOR']);
+            $ip = trim($parts[0]);
         }
         return filter_var($ip, FILTER_VALIDATE_IP);
+    }
+
+    public function handle_successful_login($user_login, $user = null) {
+        $ip = $this->get_client_ip();
+        if ($ip && isset($this->blocked_ips[$ip]) && empty($this->blocked_ips[$ip]['expires'])) {
+            unset($this->blocked_ips[$ip]);
+            update_option('knokspack_blocked_ips', $this->blocked_ips, false);
+        }
+        $this->log_activity('login', $user instanceof WP_User ? (int) $user->ID : 0, array('username' => $user_login));
+    }
+
+    private function log_blocked_request() {
+        $this->log_activity('blocked_request', get_current_user_id(), array(
+            'uri' => isset($_SERVER['REQUEST_URI']) ? substr((string) $_SERVER['REQUEST_URI'], 0, 255) : '',
+        ));
+    }
+
+    private function log_activity($action, $user_id, $details) {
+        if (empty($this->options['activity_log_enabled']) && isset($this->options['activity_log_enabled'])) {
+            return;
+        }
+        global $wpdb;
+        $wpdb->insert($wpdb->prefix . 'knokspack_activity_log', array(
+            'user_id'     => (int) $user_id,
+            'action'      => $action,
+            'object_type' => 'request',
+            'object_id'   => 0,
+            'ip_address'  => (string) $this->get_client_ip(),
+            'details'     => wp_json_encode($details),
+        ));
     }
 
     public function schedule_scans() {
@@ -128,10 +175,12 @@ class Knokspack_Security {
             'file_changes' => array()
         );
 
+        $this->file_hashes = (array) get_option('knokspack_file_hashes', array());
         foreach ($this->options['scan_directories'] as $dir) {
             $path = WP_CONTENT_DIR . '/' . $dir;
             $this->scan_directory($path, $results);
         }
+        update_option('knokspack_file_hashes', $this->file_hashes, false);
 
         update_option('knokspack_last_scan_results', $results);
         update_option('knokspack_last_scan_time', time());
@@ -151,7 +200,8 @@ class Knokspack_Security {
         );
 
         foreach ($files as $file) {
-            if ($file->isFile()) {
+            // Only PHP files can carry these signatures; skip very large files.
+            if ($file->isFile() && strtolower($file->getExtension()) === 'php' && $file->getSize() < 2 * 1024 * 1024) {
                 $this->scan_file($file, $results);
             }
         }
@@ -180,16 +230,12 @@ class Knokspack_Security {
         }
 
         // Check for file changes (if we have a hash record)
-        $file_hashes = get_option('knokspack_file_hashes', array());
-        $current_hash = md5_file($file);
-        
-        if (isset($file_hashes[$file->getPathname()]) && 
-            $file_hashes[$file->getPathname()] !== $current_hash) {
-            $results['file_changes'][] = $file->getPathname();
+        $current_hash = md5($content);
+        $key = $file->getPathname();
+        if (isset($this->file_hashes[$key]) && $this->file_hashes[$key] !== $current_hash) {
+            $results['file_changes'][] = $key;
         }
-
-        $file_hashes[$file->getPathname()] = $current_hash;
-        update_option('knokspack_file_hashes', $file_hashes);
+        $this->file_hashes[$key] = $current_hash;
     }
 
     private function send_scan_notification($results) {
@@ -269,10 +315,10 @@ class Knokspack_Security {
             wp_send_json_error('Insufficient permissions');
         }
         
-        $ip = $_POST['ip'];
+        $ip = isset($_POST['ip']) ? sanitize_text_field(wp_unslash($_POST['ip'])) : '';
         if (isset($this->blocked_ips[$ip])) {
             unset($this->blocked_ips[$ip]);
-            update_option('wpss_blocked_ips', $this->blocked_ips);
+            update_option('knokspack_blocked_ips', $this->blocked_ips, false);
             wp_send_json_success('IP unblocked successfully');
         } else {
             wp_send_json_error('IP not found in blocked list');
@@ -281,4 +327,4 @@ class Knokspack_Security {
 }
 
 // Initialize the security module
-new Knokspack_Security();
+$GLOBALS['knokspack_security'] = new Knokspack_Security();

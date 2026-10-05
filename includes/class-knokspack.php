@@ -38,16 +38,14 @@ final class Knokspack {
      * Define Constants
      */
     private function define_constants() {
-        $this->define('KNOKSPACK_DB_VERSION', '1.0.0');
+        $this->define('KNOKSPACK_DB_VERSION', '1.1.0');
     }
 
     /**
      * Initialize hooks
      */
     private function init_hooks() {
-        register_activation_hook(KNOKSPACK_PLUGIN_FILE, array($this, 'activate'));
-        register_deactivation_hook(KNOKSPACK_PLUGIN_FILE, array($this, 'deactivate'));
-
+        // Activation/deactivation hooks are registered in the main plugin file.
         add_action('init', array($this, 'init'), 0);
         add_action('plugins_loaded', array($this, 'load_textdomain'));
     }
@@ -96,52 +94,15 @@ final class Knokspack {
         // Before init action
         do_action('before_knokspack_init');
 
-        // Set up localization
-        $this->load_textdomain();
+        // Modules are loaded by knokspack_load_modules() in the main plugin file.
 
-        // Initialize modules
-        $this->init_modules();
+        // Upgrade tables for sites that updated without re-activating.
+        if (get_option('knokspack_db_version') !== KNOKSPACK_DB_VERSION) {
+            $this->install_tables();
+        }
 
         // Init action
         do_action('knokspack_init');
-    }
-
-    /**
-     * Initialize modules
-     */
-    private function init_modules() {
-        // Core modules
-        $modules = array(
-            'stats' => array(
-                'class' => 'Knokspack_Stats',
-                'file' => 'modules/stats.php'
-            ),
-            'security' => array(
-                'class' => 'Knokspack_Security',
-                'file' => 'modules/security.php'
-            ),
-            'backup' => array(
-                'class' => 'Knokspack_Backup',
-                'file' => 'modules/backup.php'
-            ),
-            'analytics' => array(
-                'class' => 'Knokspack_Analytics',
-                'file' => 'modules/analytics.php'
-            ),
-            'ai' => array(
-                'class' => 'Knokspack_AI',
-                'file' => 'modules/ai.php'
-            )
-        );
-
-        foreach ($modules as $module => $config) {
-            if (file_exists(KNOKSPACK_MODULES_DIR . $config['file'])) {
-                include_once KNOKSPACK_MODULES_DIR . $config['file'];
-                if (class_exists($config['class'])) {
-                    new $config['class']();
-                }
-            }
-        }
     }
 
     /**
@@ -168,7 +129,9 @@ final class Knokspack {
      */
     public function deactivate() {
         // Cleanup scheduled events
-        wp_clear_scheduled_hooks('knokspack_daily_cleanup');
+        foreach (array('knokspack_daily_cleanup', 'knokspack_security_scan', 'knokspack_scheduled_backup') as $hook) {
+            wp_clear_scheduled_hook($hook);
+        }
     }
 
     /**
@@ -183,13 +146,14 @@ final class Knokspack {
         // Create activity log table
         $charset_collate = $wpdb->get_charset_collate();
 
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}knokspack_activity_log (
+        $sql = "CREATE TABLE {$wpdb->prefix}knokspack_activity_log (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             user_id bigint(20) NOT NULL,
             action varchar(255) NOT NULL,
             object_type varchar(50) NOT NULL,
             object_id bigint(20),
             ip_address varchar(45),
+            details text,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY user_id (user_id),
@@ -200,13 +164,14 @@ final class Knokspack {
         dbDelta($sql);
 
         // Create backups table
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}knokspack_backups (
+        $sql = "CREATE TABLE {$wpdb->prefix}knokspack_backups (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             type varchar(50) NOT NULL,
             file_path varchar(255) NOT NULL,
             size bigint(20) NOT NULL,
             created_at datetime DEFAULT CURRENT_TIMESTAMP,
             status varchar(50) DEFAULT 'completed',
+            error text,
             PRIMARY KEY  (id),
             KEY type (type),
             KEY status (status),
@@ -215,24 +180,7 @@ final class Knokspack {
 
         dbDelta($sql);
 
-        // Create analytics table
-        $sql = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}knokspack_analytics (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            page_id bigint(20),
-            url varchar(255) NOT NULL,
-            visitor_id varchar(32),
-            referrer varchar(255),
-            device varchar(50),
-            browser varchar(50),
-            country varchar(2),
-            created_at datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
-            KEY page_id (page_id),
-            KEY visitor_id (visitor_id),
-            KEY created_at (created_at)
-        ) $charset_collate;";
-
-        dbDelta($sql);
+        // The analytics tables are created by modules/stats.php.
 
         // Create cache directory
         $cache_dir = WP_CONTENT_DIR . '/cache/knokspack';
@@ -248,6 +196,7 @@ final class Knokspack {
 
         // Set initial options
         $this->set_default_options();
+        update_option('knokspack_db_version', KNOKSPACK_DB_VERSION);
     }
 
     /**

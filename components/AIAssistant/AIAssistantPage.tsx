@@ -5,7 +5,6 @@ import RadioGroup from '../RadioGroup';
 import type { ContentType, Tone, ReadmeData } from '../../types';
 import { CONTENT_TYPE_OPTIONS, TONE_OPTIONS, SUBSCRIPTION_LIMITS, AiIcon } from '../../constants';
 import ToggleSwitch from '../ToggleSwitch';
-import type { GenerateContentResponse } from '@google/generative-ai';
 import { UserContext } from '../../contexts/UserContext';
 import { NavLink } from 'react-router-dom';
 import ReadmeForm from './ReadmeForm';
@@ -137,16 +136,10 @@ ${changelog || '= 1.0.0 =\n* Initial release.'}
                 setGeneratedContent(fullReadmeContent);
             } else {
                 const stream = await generateContentStream(prompt, contentType, tone, useGoogleSearch);
-                let lastChunk: GenerateContentResponse | null = null;
                 for await (const chunk of stream) {
                     setGeneratedContent(prev => prev + chunk.text);
-                    lastChunk = chunk;
-                }
-
-                if (lastChunk) {
-                    const groundingMetadata = lastChunk.candidates?.[0]?.groundingMetadata;
-                    if (groundingMetadata?.groundingChunks) {
-                        setSources(groundingMetadata.groundingChunks);
+                    if (chunk.sources?.length) {
+                        setSources(chunk.sources);
                     }
                 }
             }
@@ -206,7 +199,7 @@ ${changelog || '= 1.0.0 =\n* Initial release.'}
         } catch (err) {
             console.error('Failed to copy using execCommand: ', err);
             try {
-                await navigator.clipboard.writeText(contentHolder.innerText);
+                await navigator.clipboard.writeText(contentHolder.innerText || contentHolder.textContent || '');
                 setIsCopied(true);
             } catch (clipboardErr) {
                 console.error('Failed to copy using Clipboard API: ', clipboardErr);

@@ -1,17 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4. Preflight is left out on purpose so the WordPress admin's own
+   styles are not reset; a small scoped reset for the app root follows. */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@config "../../tailwind.config.js";
+@source "../../components";
+@source "../../App.tsx";
 
 @layer base {
-  body {
-    background-color: #ffffff;
+  #knokspack-root, #knokspack-root *, #knokspack-root *::before, #knokspack-root *::after {
+    box-sizing: border-box;
+    border-width: 0;
+    border-style: solid;
+    border-color: #e5e7eb;
   }
+  #knokspack-root { font-family: Inter, system-ui, sans-serif; color: #111827; margin-left: -20px; }
+  #knokspack-root h1, #knokspack-root h2, #knokspack-root h3, #knokspack-root p { margin: 0; }
+  #knokspack-root button { cursor: pointer; background: none; }
+  #knokspack-root img { max-width: 100%; height: auto; }
+  #knokspack-root a { text-decoration: none; }
 }
 
-.animation-delay-200 {
-  animation-delay: 0.2s;
-}
-
-.animation-delay-400 {
-  animation-delay: 0.4s;
-}
+.animation-delay-200 { animation-delay: 0.2s; }
+.animation-delay-400 { animation-delay: 0.4s; }
