@@ -42,6 +42,14 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [authModalState, setAuthModalState] = useState<'login' | 'signup'>('login');
 
     useEffect(() => {
+        // Inside WordPress the signed-in admin is the user, and a self-hosted
+        // plugin has every feature unlocked. The mock login below is only used
+        // when the app runs standalone (npm run dev).
+        const wpUser = typeof window !== 'undefined' ? window.knokspackData?.user : undefined;
+        if (wpUser) {
+            setUser({ id: `wp_${wpUser.id}`, name: wpUser.name, email: wpUser.email, subscriptionPlan: 'Enterprise' });
+            return;
+        }
         try {
             const storedUser = localStorage.getItem('knokspackUser');
             if (storedUser) {

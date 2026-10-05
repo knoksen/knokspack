@@ -1,180 +1,63 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { generateImage, generateContentStream } from '../geminiService';
+import { buildPrompt, generateContentStream, generateImage } from '../geminiService';
 
-// Mock the GoogleGenerativeAI module
-jest.mock('@google/generative-ai');
+const okJson = (body: unknown) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
 
-describe('geminiService', () => {
-  let mockModel: {
-    generateContent: jest.Mock;
-    generateContentStream: jest.Mock;
-  };
-
+describe('geminiService (via WordPress REST)', () => {
   beforeEach(() => {
-    // Reset mocks before each test
-    jest.clearAllMocks();
-    
-    // Setup mock model with proper implementation
-    mockModel = {
-      generateContent: jest.fn(),
-      generateContentStream: jest.fn()
+    (window as any).knokspackData = {
+      restUrl: 'http://site.test/wp-json/knokspack/v1/',
+      nonce: 'n0nce',
+      pluginUrl: 'http://site.test/wp-content/plugins/knokspack/',
     };
+    global.fetch = jest.fn() as any;
+  });
 
-    // Setup default mock implementations
-    mockModel.generateContent.mockResolvedValue({
-      response: {
-        text: () => 'mocked content'
-      }
-    });
+  afterEach(() => {
+    delete (window as any).knokspackData;
+  });
 
-    mockModel.generateContentStream.mockResolvedValue({
-      stream: () => Promise.resolve({
-        text: 'mocked stream content'
-      })
-    });
+  it('never sends an API key from the browser', async () => {
+    (global.fetch as jest.Mock).mockReturnValue(okJson({ text: '<p>Hello</p>' }));
+    await generateContentStream('Topic', 'Blog Post', 'Professional' as any, false);
+    const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
+    expect(url).toBe('http://site.test/wp-json/knokspack/v1/ai/generate');
+    expect(init.headers['X-WP-Nonce']).toBe('n0nce');
+    expect(JSON.stringify(init)).not.toMatch(/api[_-]?key/i);
+  });
 
-    // Mock the getGenerativeModel method with proper configuration handling
-    (GoogleGenerativeAI as jest.Mock).mockImplementation(() => ({
-      getGenerativeModel: jest.fn(() => mockModel)
+  it('yields the reply as a single { text } chunk', async () => {
+    (global.fetch as jest.Mock).mockReturnValue(okJson({ text: '<p>Hello</p>' }));
+    const stream = await generateContentStream('Topic', 'Blog Post', 'Professional' as any, true);
+    const chunks: string[] = [];
+    for await (const c of stream) chunks.push(c.text);
+    expect(chunks).toEqual(['<p>Hello</p>']);
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body.google_search).toBe(true);
+    expect(body.prompt).toContain('Topic');
+  });
+
+  it('turns off search for non-writing content types', async () => {
+    (global.fetch as jest.Mock).mockReturnValue(okJson({ text: 'x' }));
+    await generateContentStream('a hero section', 'Wireframe', 'Professional' as any, true);
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body.google_search).toBe(false);
+  });
+
+  it('surfaces the server message on errors', async () => {
+    (global.fetch as jest.Mock).mockReturnValue(Promise.resolve({
+      ok: false, status: 412, json: () => Promise.resolve({ message: 'AI is not set up yet.' }),
     }));
+    await expect(generateContentStream('x', 'Blog Post', 'Professional' as any, false)).rejects.toThrow('AI is not set up yet.');
   });
 
-  describe('generateImage', () => {
-    it('should generate an image successfully', async () => {
-      const mockImageData = 'data:image/jpeg;base64,mockImageData';
-      mockModel.generateContent.mockResolvedValue({
-        response: {
-          text: () => mockImageData
-        }
-      });
-
-      const result = await generateImage('test prompt');
-      
-      expect(result).toBe(mockImageData);
-      expect(mockModel.generateContent).toHaveBeenCalledWith('test prompt');
-    });
-
-    it('should handle blocked content error', async () => {
-      const error = new Error('blocked content');
-      error.message = 'Content was blocked';
-      mockModel.generateContent.mockRejectedValue(error);
-
-      await expect(generateImage('test prompt')).rejects.toThrow(
-        'Failed to generate image because the prompt was blocked for safety reasons'
-      );
-    });
-
-    it('should handle general errors', async () => {
-      mockModel.generateContent.mockRejectedValue(new Error('network error'));
-
-      await expect(generateImage('test prompt')).rejects.toThrow(
-        'Failed to generate image. Please check your prompt and network connection'
-      );
-    });
+  it('returns a data URL for images', async () => {
+    (global.fetch as jest.Mock).mockReturnValue(okJson({ dataUrl: 'data:image/png;base64,AAAA' }));
+    await expect(generateImage('a cat')).resolves.toBe('data:image/png;base64,AAAA');
   });
 
-  describe('generateContentStream', () => {
-    const mockStream = {
-      stream: jest.fn()
-    };
-
-    beforeEach(() => {
-      mockModel.generateContentStream.mockResolvedValue(mockStream);
-    });
-
-    it('should generate content stream for blog post', async () => {
-      mockModel.generateContentStream.mockResolvedValue({
-        stream: () => ({
-          text: 'blog post content'
-        })
-      });
-
-      const result = await generateContentStream(
-        'test blog',
-        'Blog Post',
-        'Professional',
-        false
-      );
-
-      expect(result).toBeDefined();
-      expect(result.stream).toBeDefined();
-      expect(mockModel.generateContentStream).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('test blog')])
-      );
-    });
-
-    it('should handle plugin guideline Q&A', async () => {
-      mockModel.generateContentStream.mockResolvedValue({
-        stream: () => ({
-          text: 'Q&A response'
-        })
-      });
-
-      const result = await generateContentStream(
-        'test question',
-        'Plugin Guideline Q&A',
-        'Professional',
-        false
-      );
-
-      expect(result).toBeDefined();
-      expect(result.stream).toBeDefined();
-      expect(mockModel.generateContentStream).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('expert assistant')])
-      );
-    });
-
-    it('should handle wireframe generation', async () => {
-      mockModel.generateContentStream.mockResolvedValue({
-        stream: () => ({
-          text: 'wireframe content'
-        })
-      });
-
-      const result = await generateContentStream(
-        'create a navbar',
-        'Wireframe',
-        'Professional',
-        false
-      );
-
-      expect(result).toBeDefined();
-      expect(result.stream).toBeDefined();
-      expect(mockModel.generateContentStream).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('expert frontend developer')])
-      );
-    });
-
-    it('should include Google search tool when enabled', async () => {
-      mockModel.generateContentStream.mockResolvedValue({
-        stream: () => ({
-          text: 'search-enabled content'
-        })
-      });
-
-      const result = await generateContentStream(
-        'test blog',
-        'Blog Post',
-        'Professional',
-        true
-      );
-
-      expect(result).toBeDefined();
-      expect(result.stream).toBeDefined();
-      expect(mockModel.generateContentStream).toHaveBeenCalledWith(
-        expect.arrayContaining([expect.stringContaining('test blog')])
-      );
-    });
-
-    it('should handle errors', async () => {
-      mockModel.generateContentStream.mockRejectedValue(new Error('API error'));
-
-      await expect(generateContentStream(
-        'test',
-        'Blog Post',
-        'Professional',
-        false
-      )).rejects.toThrow('Failed to generate content. Please check your API key and network connection');
-    });
+  it('builds tone into writing prompts', async () => {
+    const p = await buildPrompt('Launch', 'Press Release', 'Witty' as any);
+    expect(p).toContain('Witty');
+    expect(p).toContain('Launch');
   });
 });

@@ -12,7 +12,7 @@ class Knokspack_Stats_Admin {
 
     public function add_admin_menu() {
         add_submenu_page(
-            'knokspack-dashboard',
+            'knokspack',
             __('Analytics & Stats', 'knokspack'),
             __('Analytics & Stats', 'knokspack'),
             'manage_options',

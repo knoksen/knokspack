@@ -33,16 +33,10 @@ class Knokspack_Stats {
     );
 
     /** @var string Database version */
-    private $db_version = '1.0.0';
+    private $db_version = '1.1.0';
 
     public function __construct() {
-        $this->options = get_option('knokspack_stats_settings', array(
-            'enable_tracking' => true,
-            'track_visitors' => true,
-            'track_page_views' => true,
-            'track_events' => true,
-            'retention_days' => 90
-        ));
+        $this->options = wp_parse_args((array) get_option('knokspack_stats_settings', array()), $this->default_options);
 
         // Initialize stats
         add_action('init', array($this, 'init_stats'));
@@ -61,7 +55,10 @@ class Knokspack_Stats {
     }
 
     public function init_stats() {
-        $this->create_tables();
+        // dbDelta is expensive; only run it when the schema version changes.
+        if (get_option('knokspack_stats_db_version') !== $this->db_version) {
+            $this->create_tables();
+        }
         $this->schedule_cleanup();
     }
 
@@ -72,7 +69,7 @@ class Knokspack_Stats {
 
         // Analytics table
         $table_name = $wpdb->prefix . 'knokspack_analytics';
-        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
+        $sql = "CREATE TABLE $table_name (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             page_id bigint(20),
             url varchar(255) NOT NULL,
@@ -93,7 +90,7 @@ class Knokspack_Stats {
 
         // Events table
         $events_table = $wpdb->prefix . 'knokspack_analytics_events';
-        $sql .= "CREATE TABLE IF NOT EXISTS $events_table (
+        $sql .= "CREATE TABLE $events_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             event_type varchar(50) NOT NULL,
             event_name varchar(100) NOT NULL,
@@ -112,7 +109,7 @@ class Knokspack_Stats {
 
         // Daily Stats table
         $daily_table = $wpdb->prefix . 'knokspack_analytics_daily';
-        $sql .= "CREATE TABLE IF NOT EXISTS $daily_table (
+        $sql .= "CREATE TABLE $daily_table (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             stat_date date NOT NULL,
             stat_type varchar(50) NOT NULL,
@@ -161,19 +158,24 @@ class Knokspack_Stats {
     }
 
     public function track_page_view() {
-        if (is_admin() || !$this->options['track_page_views']) return;
+        if (is_admin() || empty($this->options['track_page_views']) || empty($this->options['enable_tracking'])) return;
+        if (wp_doing_ajax() || wp_doing_cron() || (defined('REST_REQUEST') && REST_REQUEST) || is_feed() || is_404() || is_preview()) return;
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return;
+        if (current_user_can('edit_posts')) return; // don't count the site's own editors
+        if (preg_match('/bot|crawl|spider|slurp|preview|monitor/i', $this->user_agent())) return;
 
         global $wpdb;
         $visitor_id = $this->get_visitor_id();
 
         $data = array(
-            'page_id' => get_the_ID(),
-            'url' => esc_url_raw($_SERVER['REQUEST_URI']),
+            'page_id' => (int) get_queried_object_id(),
+            'url' => esc_url_raw(substr((string) ($_SERVER['REQUEST_URI'] ?? ''), 0, 255)),
             'visitor_id' => $visitor_id,
             'user_id' => get_current_user_id(),
-            'referrer' => isset($_SERVER['HTTP_REFERER']) ? esc_url_raw($_SERVER['HTTP_REFERER']) : '',
-            'ip_address' => $this->get_client_ip(),
-            'user_agent' => sanitize_text_field($_SERVER['HTTP_USER_AGENT']),
+            'referrer' => isset($_SERVER['HTTP_REFERER']) ? esc_url_raw(substr((string) $_SERVER['HTTP_REFERER'], 0, 255)) : '',
+            // Privacy: no IP address or full user agent is stored.
+            'ip_address' => '',
+            'user_agent' => '',
             'device' => $this->get_device_type(),
             'browser' => $this->get_browser_type(),
             'country' => $this->get_visitor_country()
@@ -186,38 +188,22 @@ class Knokspack_Stats {
         );
     }
 
+    /**
+     * Cookie-less visitor id: a hash of IP + user agent with a salt that
+     * changes every day, so visitors can be counted per day but not followed
+     * across days, and nothing is stored on the visitor's device.
+     */
     private function get_visitor_id() {
-        if (isset($_COOKIE['knokspack_visitor_id'])) {
-            return sanitize_key($_COOKIE['knokspack_visitor_id']);
-        }
-
-        $visitor_id = wp_generate_password(32, false);
-        setcookie(
-            'knokspack_visitor_id',
-            $visitor_id,
-            time() + (86400 * 365), // 1 year
-            COOKIEPATH,
-            COOKIE_DOMAIN,
-            is_ssl()
-        );
-
-        return $visitor_id;
+        $ip = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+        return substr(hash('sha256', wp_salt('nonce') . gmdate('Y-m-d') . $ip . $this->user_agent()), 0, 32);
     }
 
-    private function get_client_ip() {
-        $ip = '';
-        if (isset($_SERVER['HTTP_CLIENT_IP'])) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (isset($_SERVER['HTTP_X_FORWARDED_FOR'])) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } elseif (isset($_SERVER['REMOTE_ADDR'])) {
-            $ip = $_SERVER['REMOTE_ADDR'];
-        }
-        return filter_var($ip, FILTER_VALIDATE_IP);
+    private function user_agent() {
+        return isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
     }
 
     private function get_device_type() {
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        $user_agent = $this->user_agent();
         
         if (preg_match('/(tablet|ipad|playbook)|(android(?!.*(mobi|opera mini)))/i', strtolower($user_agent))) {
             return 'tablet';
@@ -231,7 +217,7 @@ class Knokspack_Stats {
     }
 
     private function get_browser_type() {
-        $user_agent = $_SERVER['HTTP_USER_AGENT'];
+        $user_agent = $this->user_agent();
         
         if (strpos($user_agent, 'Chrome')) return 'chrome';
         if (strpos($user_agent, 'Firefox')) return 'firefox';
