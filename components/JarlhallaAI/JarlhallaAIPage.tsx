@@ -100,13 +100,13 @@ const JarlhallaAIPage: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {PROVIDERS.map(([value, label]) => {
             const providerHealth = health?.providers?.[value];
-            const configured = value === 'ollama' || Boolean(providerHealth?.configured);
+            const configured = Boolean(providerHealth?.configured);
             return (
               <div key={value} className="bg-white rounded-lg border border-gray-200 px-4 py-3 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="font-semibold text-knokspack-dark">{label}</span>
                   <span className={`text-xs px-2 py-1 rounded-full ${configured ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
-                    {configured ? 'Configured' : 'Key missing'}
+                    {!providerHealth ? 'Unknown' : configured ? 'Configured' : 'Key missing'}
                   </span>
                 </div>
                 <p className="text-xs text-knokspack-gray mt-2">{providerHealth?.model || 'Health data unavailable'}</p>
@@ -114,6 +114,12 @@ const JarlhallaAIPage: React.FC = () => {
             );
           })}
         </div>
+
+        {provider === 'ollama' && (
+          <p className="mb-6 text-sm text-knokspack-gray">
+            Local Ollama needs your PC and SSH tunnel to stay running. Configuration status does not verify the connection; a successful chat does.
+          </p>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <section className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
