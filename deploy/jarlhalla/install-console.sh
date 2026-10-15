@@ -28,15 +28,12 @@ p=Path('app.py')
 s=p.read_text()
 marker='from jarlhalla_console import router as console_router'
 if marker not in s:
-    p.write_text(s+'
-'+marker+'
-app.include_router(console_router)
-')
+    p.write_text(s + chr(10) + marker + chr(10) + 'app.include_router(console_router)' + chr(10))
 PYCODE
 chown jarlhalla-ai:jarlhalla-ai app.py jarlhalla_console.py jarlhalla_console.html
 chmod 644 jarlhalla_console.py jarlhalla_console.html
 venv/bin/python -m py_compile app.py jarlhalla_console.py
-venv/bin/python -c 'import app; assert any(r.path == "/workspace" for r in app.app.routes)'
+venv/bin/python -c 'import app; assert "/workspace" in app.app.openapi()["paths"]'
 systemctl restart jarlhalla-ai.service
 ready=0
 for attempt in {1..20}; do
