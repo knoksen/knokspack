@@ -1,3 +1,5 @@
+const aiBase = () => window.location.pathname.startsWith('/workspace/knokspack/') ? '/workspace' : '/api/jarlhalla-ai';
+
 export type JarlhallaAiProvider = 'openai' | 'anthropic' | 'ollama';
 
 export interface JarlhallaAiRequest {
@@ -22,7 +24,7 @@ export interface JarlhallaAiHealth {
 }
 
 export async function getJarlhallaAiHealth(): Promise<JarlhallaAiHealth> {
-  const response = await fetch('/api/jarlhalla-ai/health', {
+  const response = await fetch(`${aiBase()}/health`, {
     credentials: 'same-origin',
     headers: { Accept: 'application/json' },
   });
@@ -37,7 +39,7 @@ export async function getJarlhallaAiHealth(): Promise<JarlhallaAiHealth> {
 export async function* streamJarlhallaAi(
   request: JarlhallaAiRequest,
 ): AsyncGenerator<string, void, unknown> {
-  const response = await fetch('/api/jarlhalla-ai/chat', {
+  const response = await fetch(`${aiBase()}/chat`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: {
