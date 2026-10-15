@@ -64,6 +64,7 @@ export async function* streamJarlhallaAi(
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let receivedText = false;
 
   try {
     while (true) {
@@ -71,12 +72,21 @@ export async function* streamJarlhallaAi(
       if (done) break;
       if (value) {
         const text = decoder.decode(value, { stream: true });
-        if (text) yield text;
+        if (text) {
+          receivedText = true;
+          yield text;
+        }
       }
     }
 
     const tail = decoder.decode();
-    if (tail) yield tail;
+    if (tail) {
+      receivedText = true;
+      yield tail;
+    }
+    if (!receivedText) {
+      throw new Error('JarlhallaAI returned no text. Check the selected provider; for local Ollama, keep the PC and SSH tunnel running.');
+    }
   } finally {
     reader.releaseLock();
   }
