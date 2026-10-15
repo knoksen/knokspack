@@ -1,3 +1,5 @@
+const aiBase = () => window.location.pathname.startsWith('/workspace/knokspack/') ? '/workspace' : '/api/jarlhalla-ai';
+
 export type JarlhallaAiProvider = 'openai' | 'anthropic' | 'ollama';
 
 export interface JarlhallaAiRequest {
@@ -22,7 +24,7 @@ export interface JarlhallaAiHealth {
 }
 
 export async function getJarlhallaAiHealth(): Promise<JarlhallaAiHealth> {
-  const response = await fetch('/api/jarlhalla-ai/health', {
+  const response = await fetch(`${aiBase()}/health`, {
     credentials: 'same-origin',
     headers: { Accept: 'application/json' },
   });
@@ -37,7 +39,7 @@ export async function getJarlhallaAiHealth(): Promise<JarlhallaAiHealth> {
 export async function* streamJarlhallaAi(
   request: JarlhallaAiRequest,
 ): AsyncGenerator<string, void, unknown> {
-  const response = await fetch('/api/jarlhalla-ai/chat', {
+  const response = await fetch(`${aiBase()}/chat`, {
     method: 'POST',
     credentials: 'same-origin',
     headers: {
@@ -64,6 +66,7 @@ export async function* streamJarlhallaAi(
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  let receivedText = false;
 
   try {
     while (true) {
@@ -71,12 +74,21 @@ export async function* streamJarlhallaAi(
       if (done) break;
       if (value) {
         const text = decoder.decode(value, { stream: true });
-        if (text) yield text;
+        if (text) {
+          receivedText = true;
+          yield text;
+        }
       }
     }
 
     const tail = decoder.decode();
-    if (tail) yield tail;
+    if (tail) {
+      receivedText = true;
+      yield tail;
+    }
+    if (!receivedText) {
+      throw new Error('JarlhallaAI returned no text. Check the selected provider; for local Ollama, keep the PC and SSH tunnel running.');
+    }
   } finally {
     reader.releaseLock();
   }
