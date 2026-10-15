@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from typing import Generator, Literal
 
 from anthropic import Anthropic
@@ -10,6 +11,7 @@ from openai import OpenAI
 from pydantic import BaseModel, Field
 
 app = FastAPI(title="JarlhallaAI", version="1.1.2")
+logger = logging.getLogger(__name__)
 
 Provider = Literal["openai", "anthropic", "ollama"]
 
@@ -179,6 +181,7 @@ def health() -> dict[str, object]:
 
 @app.post("/chat")
 def chat(request: ChatRequest) -> StreamingResponse:
+    generator = None
     try:
         provider = resolve_provider(request)
         model = resolve_model(provider, request)
@@ -193,8 +196,38 @@ def chat(request: ChatRequest) -> StreamingResponse:
         else:
             raise RuntimeError(f"Unsupported provider: {provider}")
 
-        return StreamingResponse(generator, media_type="text/plain; charset=utf-8")
+        # Generators do not contact the provider until advanced. Do this before
+        # StreamingResponse commits HTTP 200, so startup failures remain JSON errors.
+        first = next(generator, None)
+        if first is None:
+            raise HTTPException(status_code=502, detail="AI provider returned no text.")
+
+        def response_stream() -> Generator[str, None, None]:
+            try:
+                yield first
+                yield from generator
+            finally:
+                generator.close()
+
+        return StreamingResponse(response_stream(), media_type="text/plain; charset=utf-8")
+    except HTTPException:
+        if generator is not None:
+            generator.close()
+        raise
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        if generator is not None:
+            generator.close()
+        message = str(exc)
+        if message not in {"OPENAI_API_KEY is not configured", "ANTHROPIC_API_KEY is not configured"}:
+            message = "AI provider configuration or startup failed. Check the server configuration."
+        raise HTTPException(status_code=503, detail=message) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"AI upstream error: {exc}") from exc
+        if generator is not None:
+            generator.close()
+        # Never send provider response bodies, credentials or internal URLs to clients.
+        logger.warning("AI provider request failed (%s)", type(exc).__name__)
+        error_text = str(exc).lower()
+        code = getattr(exc, "code", None)
+        if code == "insufficient_quota" or "no credits remaining" in error_text:
+            raise HTTPException(status_code=503, detail="AI provider credits are exhausted. Check API billing or select another configured provider.") from exc
+        raise HTTPException(status_code=502, detail="AI provider request failed. Check provider availability and configuration.") from exc
