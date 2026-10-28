@@ -38,4 +38,4 @@ jobs:
             --mount "$RUNNER_TEMP/eco-test-output:/test-output"
           test -s "$RUNNER_TEMP/eco-test-output/results.txt"
           cat "$RUNNER_TEMP/eco-test-output/results.txt"
-          grep -q '^PASS 16 WordPress integration checks' "$RUNNER_TEMP/eco-test-output/results.txt"
+          grep -q '^PASS 19 WordPress integration checks' "$RUNNER_TEMP/eco-test-output/results.txt"

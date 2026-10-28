@@ -68,6 +68,21 @@ stale/concurrent writes. It is not evidence of the production form or real mail.
 - Privacy notice, retention, deletion and notification ownership documented.
 - Restore rehearsal and deactivation rollback verified.
 
+## Read-only operational preflight
+
+`tools/preflight.php` is a separate WP-CLI diagnostic, not part of the installed
+plugin ZIP. Run it from the reviewed repository against a verified WordPress root:
+
+```sh
+wp --path=/verified/wordpress/root eval-file /reviewed/repository/integrations/jarlhalla-ecosystem/tools/preflight.php
+```
+
+It reports autoload totals and the twenty largest option names/sizes, cron hook
+names/times (no arguments), actual EDD page references and MU-plugin file hashes.
+It does not export option values, execute cron, change cache settings, send mail,
+call external services or modify production data. Store its output privately for
+review. The diagnostic has not been run against production in this session.
+
 ## Recovery
 
 Deactivate only this extension to remove its UI. Do not delete the original

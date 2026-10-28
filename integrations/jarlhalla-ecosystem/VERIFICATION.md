@@ -17,3 +17,22 @@ betaling, backup/restore og visuell mobilkontroll: NOT RUN.
 
 Ingen installasjon, aktivering eller produksjonsendring er utført. GitHub-push
 ble avvist av automatisk godkjenningskontroll. Ingen PR/CI-status påstås.
+
+## Oppfølging etter kodepublisering
+
+Jarle godkjente deretter kodepublisering og utkast-PR. PR #54 er åpen som draft:
+https://github.com/knoksen/knokspack/pull/54
+
+Ved revisjon 09a81d9018a982a79ce8951c21349cf130d39297 bestod alle tre jobber i
+Ecosystem workflow (PHP 8.0, PHP 8.4, WordPress). Frontend-testene bestod også.
+Eksisterende repo-CI feiler på PHPStan (664 feil), manglende Grunt og CodeQL.
+
+Ny lesebasert preflight er syntakskontrollert og testet i separat WordPress:
+19 integrasjonskontroller PASS. De tre nye kontrollene bekrefter metadatauttrekk,
+at syntetiske hemmelige option-verdier/cron-argumenter ikke inngår i rapporten,
+og at testverdier og cron-planen ikke endres. Produksjonskjøring er NOT RUN.
+
+Backuply-logg bekrefter fullført 2,95 GB filer/database til Ultra.cc. Restore er
+NOT RUN. WordPress home/siteurl er begge HTTPS. Critical CSS er deaktivert;
+rotårsaken til den feilede jobben er ikke verifisert. Ingen egendefinerte
+SpeedyCache-unntak vises; innebygde unntak er ikke kontrollert i kildekoden.
