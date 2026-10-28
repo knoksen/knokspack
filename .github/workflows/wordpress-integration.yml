@@ -1,0 +1,54 @@
+name: Isolated WordPress integration
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  wordpress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - wordpress: '6.0'
+            php: '8.0'
+          - wordpress: '7.1.4'
+            php: '8.4'
+    services:
+      database:
+        image: mariadb:11.4@sha256:d9fc02976678d4236145299c40dc267051681b33489c994f0ec4a097ce4a9521
+        env:
+          MARIADB_DATABASE: knokspack_integration
+          MARIADB_USER: knokspack_integration
+          # Disposable CI-only credentials; no repository or production secrets.
+          MARIADB_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+          MARIADB_ROOT_PASSWORD: ${{ github.run_id }}-root-${{ github.run_attempt }}
+        ports:
+          - 127.0.0.1:3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli, zip, mbstring
+      - run: npm ci
+      - run: npm run package
+      - name: Test packaged plugin against disposable WordPress and database
+        env:
+          KNOKSPACK_INTEGRATION_TEST: '1'
+          TEST_WORDPRESS_VERSION: ${{ matrix.wordpress }}
+          TEST_DB_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: bash tests/wordpress/run.sh
