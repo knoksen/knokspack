@@ -2,8 +2,8 @@
 
 # Phase 0 Repository Baseline
 
-Audit date: 2026-10-28  
-Repository: `knoksen/knokspack`  
+Audit date: 2026-10-28
+Repository: `knoksen/knokspack`
 Scope: static repository inspection and local frontend checks only
 
 ## Verified current baseline

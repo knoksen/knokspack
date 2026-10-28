@@ -16,7 +16,7 @@
 
 # Phase 0 Module Matrix
 
-Audit date: 2026-10-28  
+Audit date: 2026-10-28
 Scope: static registration/implementation inspection; runtime behavior is unverified.
 
 “Loaded” means explicitly present in the plugin entrypoint's module list. It does not imply successful activation in WordPress or complete production readiness. Both entrypoints use the same loader list and require readable files from their own tree (`wp-site-suite.php:45-66` and `knokspack/wp-site-suite.php:45-66`).
