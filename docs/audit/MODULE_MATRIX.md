@@ -1,5 +1,19 @@
 > Historical Phase 0 matrix. The remediation branch is based on PR #52 (`226b099`), which has only the root plugin tree. The nine default loaded modules remain unchanged and are checked by `tests/package/test_package.py`. Restore is intentionally unavailable; analytics requires site enablement AND signed visitor consent. Loaded never means production-ready. See [REMEDIATION.md](REMEDIATION.md).
 
+## Current remediation readiness
+
+| Scope | Registration | Release limitation |
+| --- | --- | --- |
+| security, performance, marketing, search, blocks, design | Loaded by root entrypoint | Implementation present; individual WordPress lifecycle/integration tests still required |
+| backup | Loaded | Restore unavailable; creation requires approved private storage; path safety covered with synthetic tests |
+| stats and admin/stats-admin | Loaded | Site opt-in plus valid visitor consent required; PHP and browser DOM tests pass; real WordPress/cache behavior unverified |
+| ads, cdn, crm, embed, growth, mobile, promotion, scan, social, video | Intentionally omitted | Stub/unavailable; never enable merely because a frontend route exists |
+| ai.php, dashboard.php, icons.php, menu.php, CRM support class | Not in default module list | Not a module-readiness guarantee; separate class/legacy paths need independent validation |
+| AI integration | Core includes/class-knokspack-ai.php path | Provider access and outbound endpoint policy not verified here |
+| Historical nested knokspack/ tree | Absent from reviewed base and excluded from packaging | Preserve divergent local history; never distribute it as authoritative source |
+
+## Historical Phase 0 evidence
+
 # Phase 0 Module Matrix
 
 Audit date: 2026-10-28  

@@ -51,3 +51,11 @@ Tests use doubles and temporary synthetic fixtures. Windows may disallow symlink
 Before release, review #52 and this stacked diff; preserve the safe restore block until replacement safeguards pass staging. Reverting this PR in production would reintroduce unsafe restore/default collection and is not a safe operational rollback. Use the previously approved artifact with analytics/restore explicitly disabled if rollback is required.
 
 No user-machine command or production approval is required to review this work. Private storage provisioning, staging tests, merge and deployment are deferred owner actions and are not requested or executed here.
+
+## Codacy follow-up
+
+The initial revision `5be0b1` passed GitHub CI (run `40762612259`) but Codacy reported 75 added findings. Retrieved the complete public Codacy issue delta (75 Added, 14 Fixed); do not confuse removed legacy restore findings with current findings.
+
+Follow-up addresses the reported rules without changing exclusions or thresholds: explicit PHP boolean comparisons matching Squiz.Operators.ComparisonOperatorUsage; immutable setup-php SHA verified from its upstream v2 ref; removed invalid/redeclared JS lint directives; build invocation moved to npm scripts so the Python archiver no longer launches subprocesses; deletion rejects stream-wrapper/malformed input and uses a canonical parent plus basename for symlink inspection. Added invalid nonce, malformed origin/cookie and archive wrapper tests. Consent buttons now serialize saves to prevent opposite requests racing; DOM tests cover no implicit request, withdrawal, concurrency and failure/retry.
+
+Local follow-up: 30 Jest tests pass; 16 PHPUnit tests / 37 assertions pass; PHPStan 0 errors; targeted PHP_CodeSniffer comparison rule 0 errors; 12 existing PHP regressions and positive/negative analysis contracts pass; package and three contract tests pass. Final Codacy/CI status is revision-specific on PR #53. Staging/production limitations above remain in force.

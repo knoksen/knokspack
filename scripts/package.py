@@ -1,7 +1,6 @@
-"""Build an installable ZIP from the repository root, never the legacy nested tree."""
+"""Validate already-built assets and create an installable ZIP from the repository root, never the legacy nested tree."""
 from pathlib import Path
 import os
-import subprocess
 import tempfile
 import zipfile
 
@@ -53,5 +52,4 @@ def package(root=ROOT):
 
 
 if __name__ == "__main__":
-    subprocess.run(["npm.cmd" if os.name == "nt" else "npm", "run", "build"], cwd=ROOT, check=True)
     package()

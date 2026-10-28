@@ -52,15 +52,19 @@ class BackupRestoreSafetyTest extends TestCase {
         try {
             self::assertFalse($method->invoke($backup, $outside));
             self::assertFileExists($outside);
+            self::assertFalse($method->invoke($backup, 'file://' . $archive));
+            self::assertFalse($method->invoke($backup, 'https://example.invalid/archive.zip'));
+            self::assertFalse($method->invoke($backup, array($archive)));
+            self::assertFileExists($archive);
             self::assertFalse($method->invoke($backup, $root . '/../' . basename($outside)));
-            if (@symlink($outside, $root . '/linked.zip')) {
+            if (@symlink($outside, $root . '/linked.zip') === true) {
                 self::assertFalse($method->invoke($backup, $root . '/linked.zip'));
                 unlink($root . '/linked.zip');
             }
             self::assertTrue($method->invoke($backup, $archive));
             self::assertFileDoesNotExist($archive);
         } finally {
-            if (file_exists($archive)) unlink($archive);
+            if ((file_exists($archive) === true)) unlink($archive);
             unlink($outside);
             rmdir($root);
         }

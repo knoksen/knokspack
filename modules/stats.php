@@ -6,7 +6,7 @@
  * @package Knokspack
  */
 
-defined('ABSPATH') || die('No direct access!');
+(defined('ABSPATH') === true) || die('No direct access!');
 
 /**
  * Main stats tracking class
@@ -45,7 +45,7 @@ class Knokspack_Stats {
         add_action('init', array($this, 'init_stats'));
         
         // Track page views
-        if ($this->options['track_page_views']) {
+        if (empty($this->options['track_page_views']) === false) {
             add_action('wp', array($this, 'track_page_view'));
         }
 
@@ -137,7 +137,7 @@ class Knokspack_Stats {
     }
 
     private function schedule_cleanup() {
-        if (!wp_next_scheduled('knokspack_daily_cleanup')) {
+        if ((wp_next_scheduled('knokspack_daily_cleanup') === false)) {
             wp_schedule_event(time(), 'daily', 'knokspack_daily_cleanup');
         }
     }
@@ -170,22 +170,22 @@ class Knokspack_Stats {
     }
 
     public function track_page_view() {
-        if (is_admin() || empty($this->options['track_page_views']) || empty($this->options['enable_tracking'])) return;
+        if ((is_admin() === true) || (empty($this->options['track_page_views']) === true) || (empty($this->options['enable_tracking']) === true)) return;
         if ($this->get_analytics_consent() !== 'granted') return;
-        if (wp_doing_ajax() || wp_doing_cron() || (defined('REST_REQUEST') && REST_REQUEST) || is_feed() || is_404() || is_preview()) return;
+        if ((wp_doing_ajax() === true) || (wp_doing_cron() === true) || ((defined('REST_REQUEST') === true) && REST_REQUEST === true) || (is_feed() === true) || (is_404() === true) || (is_preview() === true)) return;
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return;
-        if (current_user_can('edit_posts')) return; // don't count the site's own editors
-        if (preg_match('/bot|crawl|spider|slurp|preview|monitor/i', $this->user_agent())) return;
+        if ((current_user_can('edit_posts') === true)) return; // don't count the site's own editors
+        if ((preg_match('/bot|crawl|spider|slurp|preview|monitor/i', $this->user_agent()) === 1)) return;
 
         global $wpdb;
-        $visitor_id = !empty($this->options['track_visitors']) ? $this->get_visitor_id() : '';
+        $visitor_id = (empty($this->options['track_visitors']) === false) ? $this->get_visitor_id() : '';
 
         $data = array(
             'page_id' => (int) get_queried_object_id(),
             'url' => esc_url_raw(substr((string) ($_SERVER['REQUEST_URI'] ?? ''), 0, 255)),
             'visitor_id' => $visitor_id,
             'user_id' => get_current_user_id(),
-            'referrer' => isset($_SERVER['HTTP_REFERER']) ? esc_url_raw(substr((string) $_SERVER['HTTP_REFERER'], 0, 255)) : '',
+            'referrer' => (isset($_SERVER['HTTP_REFERER']) === true) ? esc_url_raw(substr((string) $_SERVER['HTTP_REFERER'], 0, 255)) : '',
             // Privacy: no IP address or full user agent is stored.
             'ip_address' => '',
             'user_agent' => '',
@@ -207,22 +207,22 @@ class Knokspack_Stats {
      * across days, and nothing is stored on the visitor's device.
      */
     private function get_visitor_id() {
-        $ip = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+        $ip = (isset($_SERVER['REMOTE_ADDR']) === true) ? (string) $_SERVER['REMOTE_ADDR'] : '';
         return substr(hash('sha256', wp_salt('nonce') . gmdate('Y-m-d') . $ip . $this->user_agent()), 0, 32);
     }
 
     private function user_agent() {
-        return isset($_SERVER['HTTP_USER_AGENT']) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
+        return (isset($_SERVER['HTTP_USER_AGENT']) === true) ? (string) $_SERVER['HTTP_USER_AGENT'] : '';
     }
 
     private function get_device_type() {
         $user_agent = $this->user_agent();
         
-        if (preg_match('/(tablet|ipad|playbook)|(android(?!.*(mobi|opera mini)))/i', strtolower($user_agent))) {
+        if ((preg_match('/(tablet|ipad|playbook)|(android(?!.*(mobi|opera mini)))/i', strtolower($user_agent)) === 1)) {
             return 'tablet';
         }
         
-        if (preg_match('/(up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|android|iemobile)/i', strtolower($user_agent))) {
+        if ((preg_match('/(up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|android|iemobile)/i', strtolower($user_agent)) === 1)) {
             return 'mobile';
         }
         
@@ -232,12 +232,12 @@ class Knokspack_Stats {
     private function get_browser_type() {
         $user_agent = $this->user_agent();
         
-        if (strpos($user_agent, 'Chrome')) return 'chrome';
-        if (strpos($user_agent, 'Firefox')) return 'firefox';
-        if (strpos($user_agent, 'Safari')) return 'safari';
-        if (strpos($user_agent, 'Edge')) return 'edge';
-        if (strpos($user_agent, 'MSIE') || strpos($user_agent, 'Trident/7')) return 'ie';
-        if (strpos($user_agent, 'Opera') || strpos($user_agent, 'OPR/')) return 'opera';
+        if (strpos($user_agent, 'Chrome') !== false) return 'chrome';
+        if (strpos($user_agent, 'Firefox') !== false) return 'firefox';
+        if (strpos($user_agent, 'Safari') !== false) return 'safari';
+        if (strpos($user_agent, 'Edge') !== false) return 'edge';
+        if (strpos($user_agent, 'MSIE') !== false || strpos($user_agent, 'Trident/7') !== false) return 'ie';
+        if (strpos($user_agent, 'Opera') !== false || strpos($user_agent, 'OPR/') !== false) return 'opera';
         
         return 'other';
     }
@@ -250,7 +250,7 @@ class Knokspack_Stats {
     public function ajax_track_event() {
         check_ajax_referer('knokspack_stats_nonce');
 
-        if (empty($this->options['enable_tracking']) || empty($this->options['track_events'])) {
+        if ((empty($this->options['enable_tracking']) === true) || (empty($this->options['track_events']) === true)) {
             wp_send_json_error('Event tracking is disabled', 403);
         }
 
@@ -260,10 +260,10 @@ class Knokspack_Stats {
 
         $event_type = sanitize_key($_POST['event_type']);
         $event_name = sanitize_key($_POST['event_name']);
-        $event_data = isset($_POST['event_data']) ? sanitize_text_field($_POST['event_data']) : '';
+        $event_data = (isset($_POST['event_data']) === true) ? sanitize_text_field($_POST['event_data']) : '';
 
         global $wpdb;
-        $visitor_id = !empty($this->options['track_visitors']) ? $this->get_visitor_id() : '';
+        $visitor_id = (empty($this->options['track_visitors']) === false) ? $this->get_visitor_id() : '';
 
         $data = array(
             'event_type' => $event_type,
@@ -271,8 +271,8 @@ class Knokspack_Stats {
             'event_data' => $event_data,
             'visitor_id' => $visitor_id,
             'user_id' => get_current_user_id(),
-            'page_id' => isset($_POST['page_id']) ? absint($_POST['page_id']) : 0,
-            'url' => isset($_POST['url']) ? esc_url_raw($_POST['url']) : ''
+            'page_id' => (isset($_POST['page_id']) === true) ? absint($_POST['page_id']) : 0,
+            'url' => (isset($_POST['url']) === true) ? esc_url_raw($_POST['url']) : ''
         );
 
         $result = $wpdb->insert(
@@ -281,7 +281,7 @@ class Knokspack_Stats {
             array('%s', '%s', '%s', '%s', '%d', '%d', '%s')
         );
 
-        if ($result) {
+        if ($result !== false && $result > 0) {
             wp_send_json_success('Event tracked successfully');
         } else {
             wp_send_json_error('Failed to track event');
@@ -289,38 +289,41 @@ class Knokspack_Stats {
     }
 
     public function ajax_set_analytics_consent() {
-        if (!check_ajax_referer('knokspack_analytics_consent', 'nonce', false)) {
+        if ((check_ajax_referer('knokspack_analytics_consent', 'nonce', false) === false)) {
             wp_send_json_error('Invalid analytics preference request', 403);
         }
 
-        $origin = isset($_SERVER['HTTP_ORIGIN']) ? wp_parse_url(wp_unslash($_SERVER['HTTP_ORIGIN'])) : false;
+        $origin = (isset($_SERVER['HTTP_ORIGIN']) === true) && is_string($_SERVER['HTTP_ORIGIN']) === true
+            ? wp_parse_url(wp_unslash($_SERVER['HTTP_ORIGIN'])) : false;
         $site = wp_parse_url(home_url());
-        if (!is_array($origin) || empty($origin['host']) || empty($origin['scheme'])
+        if ((is_array($origin) === false) || is_array($site) === false
+            || empty($site['host']) === true || empty($site['scheme']) === true
+            || (empty($origin['host']) === true) || (empty($origin['scheme']) === true)
             || strtolower($origin['host']) !== strtolower($site['host'])
             || strtolower($origin['scheme']) !== strtolower($site['scheme'])
             || ($origin['port'] ?? ($origin['scheme'] === 'https' ? 443 : 80)) !== ($site['port'] ?? ($site['scheme'] === 'https' ? 443 : 80))) {
             wp_send_json_error('Analytics preference requests must come from this site', 403);
         }
 
-        $choice = isset($_POST['consent']) ? sanitize_key(wp_unslash($_POST['consent'])) : '';
-        if (!in_array($choice, array('granted', 'denied'), true)) {
+        $choice = (isset($_POST['consent']) === true) ? sanitize_key(wp_unslash($_POST['consent'])) : '';
+        if ((in_array($choice, array('granted', 'denied'), true) === false)) {
             wp_send_json_error('Invalid analytics preference', 400);
         }
 
         $expires = time() + self::CONSENT_MAX_AGE;
         $signature = wp_hash('knokspack_analytics_consent|' . $choice . '|' . $expires, 'auth');
         $value = $choice . '|' . $expires . '|' . $signature;
-        $path = defined('COOKIEPATH') && COOKIEPATH ? COOKIEPATH : '/';
-        $domain = defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '';
+        $path = (defined('COOKIEPATH') === true) && COOKIEPATH !== '' ? COOKIEPATH : '/';
+        $domain = (defined('COOKIE_DOMAIN') === true) ? COOKIE_DOMAIN : '';
 
-        if (!setcookie(self::CONSENT_COOKIE, $value, array(
+        if ((setcookie(self::CONSENT_COOKIE, $value, array(
             'expires' => $expires,
             'path' => $path,
             'domain' => $domain,
-            'secure' => is_ssl(),
+            'secure' => (is_ssl() === true),
             'httponly' => true,
             'samesite' => 'Lax'
-        ))) {
+        )) === false)) {
             wp_send_json_error('Could not save analytics preference', 500);
         }
 
@@ -329,11 +332,11 @@ class Knokspack_Stats {
     }
 
     public function render_analytics_consent_controls() {
-        if (is_admin()) {
+        if ((is_admin() === true)) {
             return;
         }
 
-        if (empty($this->options['enable_tracking'])) return;
+        if ((empty($this->options['enable_tracking']) === true)) return;
         $choice = $this->get_analytics_consent();
         ?>
         <details class="knokspack-analytics-preferences" <?php echo $choice === null ? 'open' : ''; ?>>
@@ -347,7 +350,7 @@ class Knokspack_Stats {
     }
 
     public function enqueue_analytics_consent_script() {
-        if (is_admin() || empty($this->options['enable_tracking'])) {
+        if ((is_admin() === true) || (empty($this->options['enable_tracking']) === true)) {
             return;
         }
 
@@ -365,14 +368,15 @@ class Knokspack_Stats {
     }
 
     private function get_analytics_consent() {
-        $value = isset($_COOKIE[self::CONSENT_COOKIE]) ? (string) $_COOKIE[self::CONSENT_COOKIE] : '';
+        $value = (isset($_COOKIE[self::CONSENT_COOKIE]) === true) && is_string($_COOKIE[self::CONSENT_COOKIE]) === true
+            ? $_COOKIE[self::CONSENT_COOKIE] : '';
         $parts = explode('|', $value);
         if (count($parts) !== 3) {
             return null;
         }
 
         list($choice, $expires, $signature) = $parts;
-        if (!in_array($choice, array('granted', 'denied'), true) || !ctype_digit($expires)) {
+        if ((in_array($choice, array('granted', 'denied'), true) === false) || (ctype_digit($expires) === false)) {
             return null;
         }
 
@@ -382,17 +386,17 @@ class Knokspack_Stats {
         }
 
         $expected = wp_hash('knokspack_analytics_consent|' . $choice . '|' . $expires, 'auth');
-        return hash_equals($expected, $signature) ? $choice : null;
+        return (hash_equals($expected, $signature) === true) ? $choice : null;
     }
 
     public function ajax_get_stats() {
         check_ajax_referer('knokspack_stats_nonce');
-        if (!current_user_can('manage_options')) {
+        if ((current_user_can('manage_options') === false)) {
             wp_send_json_error('Insufficient permissions');
         }
 
-        $period = isset($_GET['period']) ? sanitize_key($_GET['period']) : '7days';
-        $type = isset($_GET['type']) ? sanitize_key($_GET['type']) : 'page_views';
+        $period = (isset($_GET['period']) === true) ? sanitize_key($_GET['period']) : '7days';
+        $type = (isset($_GET['type']) === true) ? sanitize_key($_GET['type']) : 'page_views';
 
         $stats = $this->get_stats($period, $type);
         wp_send_json_success($stats);
@@ -471,7 +475,7 @@ class Knokspack_Stats {
         }
 
         $results = $wpdb->get_results($query);
-        return $results ? $results : array();
+        return $results ?? array();
     }
 }
 

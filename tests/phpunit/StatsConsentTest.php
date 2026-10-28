@@ -7,6 +7,7 @@ class StatsConsentTest extends TestCase {
 
     protected function setUp(): void {
         $GLOBALS['wpdb'] = new Knokspack_Test_Wpdb();
+        unset($GLOBALS['knokspack_test_nonce_result']);
         $GLOBALS['knokspack_test_options'] = array(
             'knokspack_stats_settings' => array(
                 'enable_tracking' => true,
@@ -130,6 +131,39 @@ class StatsConsentTest extends TestCase {
             }
         }
         $_POST = array();
+    }
+
+
+    public function test_invalid_nonce_rejects_preference_without_setting_cookie(): void {
+        $GLOBALS['knokspack_test_nonce_result'] = false;
+        $_POST = array('consent' => 'granted');
+        try {
+            $this->stats->ajax_set_analytics_consent();
+            self::fail('Invalid nonce must reject consent.');
+        } catch (Knokspack_Test_Json_Response $response) {
+            self::assertSame(403, $response->status);
+            self::assertArrayNotHasKey('knokspack_analytics_consent', $_COOKIE);
+        } finally {
+            unset($GLOBALS['knokspack_test_nonce_result']);
+            $_POST = array();
+        }
+    }
+
+    public function test_malformed_origin_is_rejected(): void {
+        $_SERVER['HTTP_ORIGIN'] = array('https://example.test');
+        $_POST = array('consent' => 'granted');
+        try {
+            $this->stats->ajax_set_analytics_consent();
+            self::fail('Malformed origin must be rejected.');
+        } catch (Knokspack_Test_Json_Response $response) {
+            self::assertSame(403, $response->status);
+        } finally { $_POST = array(); }
+    }
+
+    public function test_array_cookie_is_ignored_without_collection(): void {
+        $_COOKIE['knokspack_analytics_consent'] = array('granted');
+        $this->stats->track_page_view();
+        self::assertCount(0, $GLOBALS['wpdb']->inserts);
     }
 
     private function consentCookie($choice): string {

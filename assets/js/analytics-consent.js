@@ -1,5 +1,3 @@
-/* global document, fetch, URLSearchParams, window */
-/* eslint-disable jest/require-hook -- This file is a WordPress browser script, not a Jest test. */
 (() => {
     const controls = document.querySelector('.knokspack-analytics-preferences');
     const settings = window.knokspackAnalyticsConsent;
@@ -9,17 +7,19 @@
     }
 
     const status = controls.querySelector('[data-knokspack-consent-status]');
-    controls.querySelectorAll('[data-knokspack-consent]').forEach((button) => {
+    if (status === null) return;
+    const buttons = controls.querySelectorAll('[data-knokspack-consent]');
+    buttons.forEach((button) => {
         button.addEventListener('click', async () => {
-            button.disabled = true;
-            const body = new URLSearchParams({
+            buttons.forEach((control) => { control.disabled = true; });
+            const body = new window.URLSearchParams({
                 action: 'knokspack_set_analytics_consent',
                 nonce: settings.nonce,
                 consent: button.dataset.knokspackConsent,
             });
 
             try {
-                const response = await fetch(settings.ajaxUrl, {
+                const response = await window.fetch(settings.ajaxUrl, {
                     method: 'POST',
                     credentials: 'same-origin',
                     body,
@@ -34,7 +34,7 @@
             } catch (error) {
                 status.textContent = error instanceof Error ? error.message : 'Could not save analytics preference.';
             } finally {
-                button.disabled = false;
+                buttons.forEach((control) => { control.disabled = false; });
             }
         });
     });
