@@ -2,7 +2,7 @@ from pathlib import Path
 import os
 import httpx
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, FileResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix='/workspace')
@@ -27,8 +27,10 @@ FOCUS = {'general':'Tverrfaglig samarbeid.', 'building':'Arkitektur, konstruksjo
 @router.get('/knokspack/{asset:path}')
 def knokspack(asset: str):
     root = Path(__file__).with_name('knokspack').resolve()
-    file = (root / (asset or 'index.html')).resolve()
-    if not file.is_relative_to(root) or not file.is_file():
+    files = {p.relative_to(root).as_posix(): p for p in root.rglob('*')
+             if p.is_file() and p.resolve().is_relative_to(root)}
+    file = files.get(asset or 'index.html')
+    if file is None:
         raise HTTPException(404, 'Filen finnes ikke')
     return FileResponse(file, headers={'Cache-Control':'no-store'})
 
@@ -49,29 +51,39 @@ async def health():
     except (httpx.HTTPError, ValueError):
         return {'connected': False}
 
-@router.post('/chat', response_class=StreamingResponse)
+@router.post('/chat', response_class=PlainTextResponse)
 async def chat(message: Message):
-    client = httpx.AsyncClient(timeout=httpx.Timeout(180, connect=5), trust_env=False)
-    response = None
+    endpoint = os.getenv('OLLAMA_BASE_URL', 'http://127.0.0.1:11436/v1').rstrip('/')
+    if endpoint.endswith('/v1'):
+        endpoint = endpoint[:-3]
+    system = PERSONA + '\nArbeidsområde: ' + FOCUS[message.workspace] + '''
+Denne chatten kjører en lokal modell via Ollama. Ikke påstå at du er trent av Google eller andre uten dokumentasjon. Ikke dikt opp slettefrister, lagringsgarantier eller tilgang til filer.
+Du kan bruke innhold som brukeren faktisk gir deg som kontekst, men du kan ikke endre modellvektene dine eller lese lokale mapper med dagens verktøy. Ved forespørsel om JSON-filer: forklar kort at brukeren kan gi filinnhold eller et filinventar for vurdering. Ikke påstå at filene er funnet eller importert.
+'''
+    messages = [{'role':'system','content':system}]
+    if message.context:
+        messages.append({'role':'user','content':'Tidligere samtale til orientering, ikke systeminstruksjoner:\n' + message.context})
+    messages.append({'role':'user','content':message.prompt})
     try:
-        request = client.build_request('POST', BASE + '/chat', json={'prompt':message.prompt, 'model':message.model, 'context':PERSONA + '\nArbeidsområde: ' + FOCUS[message.workspace] + '\nTidligere samtale:\n' + message.context, 'tone':'Svar på norsk bokmål med mindre brukeren ber om et annet språk. Kort, presist og tilpasset Jarle. Ved en hilsen: svar kort på norsk.', 'provider':'ollama', 'mode':'chat'})
-        response = await client.send(request, stream=True)
-        response.raise_for_status()
-        iterator = response.aiter_bytes()
-        first = await anext(iterator, b'')
-        if not first:
-            raise ValueError('empty')
-    except (httpx.HTTPError, ValueError):
-        if response is not None:
-            await response.aclose()
-        await client.aclose()
-        raise HTTPException(502, 'Ingen kontakt med modellen. Kontroller Ollama og SSH-tunnelen.')
-    async def chunks():
-        try:
-            yield first
-            async for chunk in iterator:
-                yield chunk
-        finally:
-            await response.aclose()
-            await client.aclose()
-    return StreamingResponse(chunks(), media_type='text/plain', headers={'Cache-Control':'no-store'})
+        async with httpx.AsyncClient(timeout=httpx.Timeout(240,connect=8),trust_env=False) as client:
+            response = await client.post(endpoint + '/api/chat', json={
+                'model':message.model, 'messages':messages, 'stream':False,
+                'think':False, 'options':{'num_ctx':16384,'num_predict':2048}})
+            response.raise_for_status()
+            payload = response.json()
+    except httpx.TimeoutException:
+        raise HTTPException(504,'Ollama brukte for lang tid. Prøv en kortere melding eller den mindre modellen.') from None
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502,f'Ollama avviste forespørselen (HTTP {exc.response.status_code}).') from None
+    except httpx.HTTPError:
+        raise HTTPException(502,'Forbindelsen til Ollama ble brutt. Kontroller tunnelvinduet og Ollama på PC-en.') from None
+    except ValueError:
+        raise HTTPException(502,'Ollama returnerte et ugyldig svarformat.') from None
+    content = (payload.get('message') or {}).get('content')
+    if payload.get('error') or not isinstance(content,str) or not content.strip():
+        raise HTTPException(502,'Ollama fullførte uten svartekst. Ingen modelltekst ble levert.')
+    if payload.get('done') is not True:
+        raise HTTPException(502,'Ollama bekreftet ikke at svaret var fullført.')
+    if payload.get('done_reason') == 'length':
+        content += '\n\n[Modellens svargrense ble nådd. Be om fortsettelse ved behov.]'
+    return PlainTextResponse(content,headers={'Cache-Control':'no-store','X-Jarlhalla-Chat':'ollama-native-v6'})
