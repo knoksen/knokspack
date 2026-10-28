@@ -40,11 +40,25 @@ class Knokspack_Test_Json_Response extends RuntimeException {
 class Knokspack_Test_Wpdb {
     public $prefix = 'wp_';
     public $inserts = array();
+    public $insert_id = 0;
+    public $updates = array();
+    public $fail_insert = false;
+    public $fail_update = false;
 
     public function insert($table, $data, $format = null) {
+        if ($this->fail_insert === true) return false;
+        $this->insert_id++;
         $this->inserts[] = array($table, $data, $format);
         return 1;
     }
+
+    public function update($table, $data, $where) {
+        $this->updates[] = array($table, $data, $where);
+        return $this->fail_update === true ? false : 1;
+    }
+
+    public function get_results($sql, $format = null) { return array(); }
+    public function prepare($sql, ...$args) { return $sql; }
 }
 
 $GLOBALS['knokspack_test_options'] = array();
@@ -225,3 +239,28 @@ if ((function_exists('__') === false)) {
 
 require_once ABSPATH . 'modules/stats.php';
 require_once ABSPATH . 'modules/backup.php';
+
+if (defined('ARRAY_A') === false) define('ARRAY_A', 'ARRAY_A');
+if (defined('ARRAY_N') === false) define('ARRAY_N', 'ARRAY_N');
+if (function_exists('wp_mkdir_p') === false) {
+    function wp_mkdir_p($path) {
+        return is_dir($path) === true || mkdir($path, 0700, true) === true;
+    }
+}
+if (function_exists('wp_generate_password') === false) {
+    function wp_generate_password($length, $special = true) { return substr(bin2hex(random_bytes($length)), 0, $length); }
+}
+if (function_exists('current_time') === false) {
+    function current_time($type) { return gmdate('Y-m-d H:i:s'); }
+}
+if (function_exists('get_bloginfo') === false) {
+    function get_bloginfo($type) { return 'test-fixture'; }
+}
+if (function_exists('wp_get_theme') === false) {
+    function wp_get_theme() {
+        return new class { public function get($name) { return 'Fixture'; } };
+    }
+}
+if (function_exists('absint') === false) {
+    function absint($value) { return abs((int) $value); }
+}

@@ -70,4 +70,52 @@ class BackupRestoreSafetyTest extends TestCase {
         }
     }
 
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    public function test_archives_use_database_identity_and_insert_failure_preserves_existing_archives(): void {
+        self::assertTrue(class_exists(ZipArchive::class));
+        $root = sys_get_temp_dir() . '/knokspack-create-' . bin2hex(random_bytes(6));
+        mkdir($root, 0700);
+        define('KNOKSPACK_PRIVATE_BACKUP_DIR', $root);
+        $backup = new Knokspack_Backup();
+        $cleanup = new ReflectionMethod(Knokspack_Backup::class, 'rrmdir');
+        try {
+            self::assertSame(1, $backup->create_backup('database'));
+            self::assertSame(2, $backup->create_backup('database'));
+            self::assertArrayNotHasKey('id', $GLOBALS['wpdb']->inserts[0][1]);
+            $paths = glob($root . '/*.zip');
+            self::assertCount(2, $paths);
+            foreach ($paths as $path) {
+                $zip = new ZipArchive();
+                self::assertTrue($zip->open($path, ZipArchive::CHECKCONS));
+                $folder = basename($path, '.zip');
+                $manifest = json_decode($zip->getFromName($folder . '/manifest.json'), true);
+                self::assertContains($manifest['id'], array(1, 2));
+                self::assertSame('database', $manifest['type']);
+                self::assertNotFalse($zip->getFromName($folder . '/database.sql'));
+                $zip->close();
+            }
+            $GLOBALS['wpdb']->fail_insert = true;
+            $result = $backup->create_backup('database');
+            self::assertSame('backup_record_error', $result->get_error_code());
+            self::assertSame($paths, glob($root . '/*.zip'));
+        } finally { $cleanup->invoke($backup, $root); }
+    }
+
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    public function test_failed_completion_write_never_reports_success(): void {
+        $root = sys_get_temp_dir() . '/knokspack-record-' . bin2hex(random_bytes(6));
+        mkdir($root, 0700);
+        define('KNOKSPACK_PRIVATE_BACKUP_DIR', $root);
+        $GLOBALS['wpdb']->fail_update = true;
+        $backup = new Knokspack_Backup();
+        try {
+            $result = $backup->create_backup('database');
+            self::assertInstanceOf(WP_Error::class, $result);
+            self::assertSame('backup_error', $result->get_error_code());
+            self::assertSame('failed', $GLOBALS['wpdb']->updates[1][1]['status']);
+        } finally {
+            (new ReflectionMethod(Knokspack_Backup::class, 'rrmdir'))->invoke($backup, $root);
+        }
+    }
+
 }

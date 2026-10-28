@@ -70,7 +70,7 @@ class Knokspack_Backup {
         // Never rely on .htaccess to protect database dumps on nginx/IIS.
         $private_root = (defined('KNOKSPACK_PRIVATE_BACKUP_DIR') === true) ? realpath(KNOKSPACK_PRIVATE_BACKUP_DIR) : false;
         $site_root = realpath(ABSPATH);
-        $configured = realpath($this->options['backup_path']);
+        $configured = is_string($this->options['backup_path']) === true ? realpath($this->options['backup_path']) : false;
         if ($private_root === false || $site_root === false || $configured !== $private_root || ($this->is_within($private_root, $site_root) === true)) {
             return new WP_Error('private_backup_required', 'Configure an existing private backup directory outside the web root before creating backups.');
         }
@@ -78,22 +78,11 @@ class Knokspack_Backup {
             return new WP_Error('zip_required', 'The PHP zip extension is required.');
         }
 
-        
-        $backup_id = time();
-        $this->protect_dir($this->options['backup_path']);
-        // A random part in the name means a backup URL cannot be guessed even
-        // on servers that ignore .htaccess (e.g. nginx).
-        $backup_dir = $this->options['backup_path'] . '/' . $backup_id . '-' . wp_generate_password(16, false);
-        
-        if ((wp_mkdir_p($backup_dir) === false)) {
-            return new WP_Error('backup_error', 'Could not create backup directory');
-        }
 
-        // Start backup record
-        $wpdb->insert(
+        // The table owns identity: timestamps collide for simultaneous requests.
+        $inserted = $wpdb->insert(
             $wpdb->prefix . 'knokspack_backups',
             array(
-                'id' => $backup_id,
                 'type' => $type,
                 'file_path' => '',
                 'size' => 0,
@@ -101,8 +90,17 @@ class Knokspack_Backup {
                 'created_at' => current_time('mysql')
             )
         );
+        if ($inserted === false || $wpdb->insert_id < 1) {
+            return new WP_Error('backup_record_error', 'Could not reserve backup record');
+        }
+        $backup_id = $wpdb->insert_id;
+        $backup_dir = $private_root . '/' . $backup_id . '-' . wp_generate_password(16, false);
 
         try {
+            $this->protect_dir($private_root);
+            if (wp_mkdir_p($backup_dir) === false) {
+                throw new Exception('Could not create backup directory');
+            }
             // Backup database
             if ($type === 'full' || $type === 'database') {
                 $this->backup_database($backup_dir);
@@ -136,8 +134,8 @@ class Knokspack_Backup {
                     throw new Exception('Failed to finish ZIP archive');
                 }
                 
-                // Update backup record
-                $wpdb->update(
+                // Do not report success when the archive could not be recorded.
+                $updated = $wpdb->update(
                     $wpdb->prefix . 'knokspack_backups',
                     array(
                         'status' => 'completed',
@@ -146,6 +144,10 @@ class Knokspack_Backup {
                     ),
                     array('id' => $backup_id)
                 );
+
+                if ($updated === false) {
+                    throw new Exception('Could not record completed backup');
+                }
 
                 // Cleanup temporary directory
                 $this->rrmdir($backup_dir);
