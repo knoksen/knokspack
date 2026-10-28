@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # CI-only: never point this runner at an existing site or database.
-set -euo pipefail
+set -Eeuo pipefail
 if [[ "${GITHUB_ACTIONS:-}" != true || "${KNOKSPACK_INTEGRATION_TEST:-}" != 1 || -z "${RUNNER_TEMP:-}" ]]; then
   echo "Refusing to run outside an explicitly enabled disposable GitHub runner" >&2
   exit 1
@@ -10,10 +10,14 @@ REPO="$(pwd)"
 SANDBOX="$(mktemp -d "$RUNNER_TEMP/knokspack-wp.XXXXXX")"
 export TEST_PRIVATE_DIR="$SANDBOX/private"
 mkdir -p "$SANDBOX/site" "$TEST_PRIVATE_DIR"
+trap 'if [[ -f "$SANDBOX/site/wp-content/debug.log" ]]; then tail -n 60 "$SANDBOX/site/wp-content/debug.log"; fi' ERR
 curl --fail --silent --show-error --location --retry 3   https://github.com/wp-cli/wp-cli/releases/download/v2.12.0/wp-cli-2.12.0.phar -o "$SANDBOX/wp-cli.phar"
 printf '%s  %s\n' ce34ddd838f7351d6759068d09793f26755463b4a4610a5a5c0a97b68220d85c "$SANDBOX/wp-cli.phar" | sha256sum --check
 wp() { php "$SANDBOX/wp-cli.phar" --path="$SANDBOX/site" "$@"; }
-wp core download --version="$TEST_WORDPRESS_VERSION" --locale=en_US
+# System unzip preserves long paths in newer WordPress distributions.
+curl --fail --silent --show-error --location --retry 3 "https://wordpress.org/wordpress-$TEST_WORDPRESS_VERSION.zip" -o "$SANDBOX/core.zip"
+unzip -q "$SANDBOX/core.zip" -d "$SANDBOX/core"
+cp -a "$SANDBOX/core/wordpress/." "$SANDBOX/site/"
 wp core verify-checksums --version="$TEST_WORDPRESS_VERSION" --locale=en_US
 wp config create --dbname=knokspack_integration --dbuser=knokspack_integration   --dbpass="$TEST_DB_PASSWORD" --dbhost=127.0.0.1:3306 --extra-php <<'PHP'
 define('KNOKSPACK_INTEGRATION_TEST', true);
@@ -33,6 +37,7 @@ server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 for attempt in {1..30}; do
   if curl --silent --fail http://127.0.0.1:8091/ > /dev/null; then break; fi
+  echo "Waiting for disposable HTTP server (attempt $attempt)"
   sleep 1
 done
 nonce="$(wp eval 'echo wp_create_nonce("knokspack_analytics_consent");')"
