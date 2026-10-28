@@ -21,3 +21,9 @@ Cron and external WordPress HTTP requests are disabled. All users, content, anal
 This is isolated CI validation, not an approved staging/production deployment. It does not reenable restore, import SQL, test a real reverse proxy/cache/TLS stack, validate every module's feature behavior, or prove encrypted/off-site backups and atomic rollback. It does not contact external AI/marketing services. Production release still requires independent review and environment-specific approval.
 
 Results must be read from the workflow for the exact PR revision; creation of this suite does not itself prove any case has passed. No Windows command is needed to execute the CI suite.
+
+## Verified execution
+
+Revision `55f605e727a7d8ef93c89d5a88e7117d288df4ab` passed both matrix jobs in [run 40769194764](https://github.com/knoksen/knokspack/actions/runs/40769194764). Each job verified activation/loading/schema, REST dispatch permissions, database-to-ZIP export, HTTP consent collection/withdrawal/origin rejection and data-preserving deactivation. Standard CI and Codacy also passed on that revision.
+
+This supersedes the earlier unit-only coverage for these specific flows. REST role checks use real WordPress request dispatch with fixture users; they do not prove an administrator cookie/REST-nonce login handshake or every privileged AJAX handler. No restore was performed.

@@ -19,7 +19,7 @@ Remote PR #52 (`fix/php-runtime-release-blockers`, `226b099de11dce29676fbf7dcfc1
 - Nine default loaded PHP modules remain unchanged. Static contract checks cover their list and nonempty source files; omitted modules are not automatically activated. The historical module matrix is explicitly marked historical. Runtime activation of every module is still unverified.
 - CI now actually runs PHPUnit, requires PHPStan, validates packaging and module contracts, and adds PHP 8.0 syntax coverage. Existing PHP 8.4 isolated regressions and positive/negative analysis contracts remain enabled.
 
-## Executed local evidence
+## Initial local evidence (historical)
 
 Windows, Node dependencies installed from unchanged lockfile (`npm ci --ignore-scripts`), PHP 8.4.27 portable test runtime and Composer verified against official SHA-256 metadata. No global installation or production configuration change.
 
@@ -35,7 +35,7 @@ Windows, Node dependencies installed from unchanged lockfile (`npm ci --ignore-s
 | PHP syntax: includes, modules, new PHPUnit fixtures and entrypoint | Pass on PHP 8.4.27; PHP 8.0 added to CI, not claimed locally |
 | `git diff --check` | Pass |
 
-Tests use doubles and temporary synthetic fixtures. Windows may disallow symlink creation: the deletion test always verifies sibling/traversal/valid ZIP boundaries, and exercises symlinks only if permitted. No real WordPress DB, web server, backup archive or customer data was used.
+Tests use doubles and temporary synthetic fixtures. Windows may disallow symlink creation: the deletion test always verifies sibling/traversal/valid ZIP boundaries, and exercises symlinks only if permitted. At this initial stage no real WordPress DB, web server or backup archive was used. Later isolated WordPress evidence below supersedes this coverage limit; customer data is never used.
 
 ## Remaining gates and blind spots
 
@@ -65,3 +65,13 @@ Local follow-up: 30 Jest tests pass; 16 PHPUnit tests / 37 assertions pass; PHPS
 Confirmed the existing table uses AUTO_INCREMENT but creation supplied `time()` as its primary key and ignored insert/update failures. Concurrent requests could collide and update the wrong record. Creation now reserves the database-assigned ID, fails before archive creation if reservation fails, and reports an error if completion cannot be recorded. Existing records/archives are not migrated. Malformed configured paths fail closed instead of reaching realpath with an array.
 
 Added synthetic ZIP tests using temporary private directories and database doubles: sequential requests receive distinct database IDs; generated archives reopen with consistency checks and expected manifests/database.sql; a failed insert preserves previous archives; a failed completion write returns WP_Error. These are not real database-export or restore rehearsals. PHP zip is explicitly enabled in CI. Local PHPUnit now passes 18 tests / 55 assertions with mbstring and zip loaded in inherited test configuration; PHPStan and the targeted PHP_CodeSniffer rule remain clean.
+
+## Real WordPress integration evidence
+
+Revision `55f605e727a7d8ef93c89d5a88e7117d288df4ab` passed both jobs in [isolated integration run 40769194764](https://github.com/knoksen/knokspack/actions/runs/40769194764): WordPress 6.0/PHP 8.0 and WordPress 7.1.4/PHP 8.4, with a dedicated MariaDB 11.4 fixture database. [Standard CI run 40769194707](https://github.com/knoksen/knokspack/actions/runs/40769194707) and Codacy also passed. See [test scope and safety boundaries](../../tests/wordpress/README.md).
+
+Verified against the built ZIP, not mocks: plugin activation and all nine module includes; five core/analytics tables; schema-version refresh preserving a fixture option; guest/subscriber/admin REST overview authorization; restore-disabled behavior; actual database export to a consistent ZIP containing the synthetic marker and matching manifest/record; anonymous HTTP deny/grant/withdrawal and observed page-view row counts; invalid Origin rejection; guest restore denial; cleared scheduled hooks and preserved data after deactivation.
+
+The test harness was repaired without weakening its guard: system ZIP extraction preserves long upstream WordPress paths, fixture URLs are explicitly fixed to loopback, and diagnostics expose only non-secret fixture identity. No application-code change was required by this integration pass. The local Docker daemon was unavailable and was not started; CI used disposable services instead.
+
+Remaining release gates: real hosting/cache/TLS behavior, authenticated administrator cookie/REST-nonce and privileged AJAX paths beyond this suite, full module feature tests, encrypted/off-site storage, independently reviewed archive authentication/extraction/SQL preflight and restore/rollback rehearsal. Restore remains disabled. No staging or production deployment is authorized or performed by this suite.
