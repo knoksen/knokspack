@@ -56,7 +56,7 @@ knokspack_integration_check($manifest['id'] === $id && $manifest['type'] === 'da
 $archive->close();
 knokspack_integration_check($wpdb->last_error === '', 'no database error after export');
 
-update_option('knokspack_stats_settings', array('enable_tracking' => true, 'track_page_views' => true, 'track_visitors' => true));
+update_option('knokspack_stats_settings', array('enable_tracking' => true, 'track_page_views' => true, 'track_visitors' => true, 'track_events' => true));
 knokspack()->deactivate();
 foreach (array('knokspack_daily_cleanup', 'knokspack_security_scan', 'knokspack_scheduled_backup') as $hook) {
     knokspack_integration_check(wp_next_scheduled($hook) === false, 'deactivation clears scheduled hook: ' . $hook);

@@ -30,10 +30,17 @@ define('WP_DEBUG', true);
 define('WP_DEBUG_LOG', true);
 define('WP_DEBUG_DISPLAY', false);
 PHP
-wp core install --url=http://127.0.0.1:8091 --title=Knokspack-integration   --admin_user=integration_admin --admin_password="$(openssl rand -hex 24)"   --admin_email=integration@example.invalid --skip-email
+export TEST_ADMIN_PASSWORD="$(openssl rand -hex 24)"
+export TEST_SUBSCRIBER_PASSWORD="$(openssl rand -hex 24)"
+export TEST_EDITOR_PASSWORD="$(openssl rand -hex 24)"
+wp core install --url=http://127.0.0.1:8091 --title=Knokspack-integration   --admin_user=integration_admin --admin_password="$TEST_ADMIN_PASSWORD"   --admin_email=integration@example.invalid --skip-email
 unzip -q "$REPO/build/knokspack.zip" -d "$SANDBOX/site/wp-content/plugins"
 wp plugin activate knokspack
 wp eval-file "$REPO/tests/wordpress/assertions.php"
+wp user update integration_subscriber --user_pass="$TEST_SUBSCRIBER_PASSWORD"
+wp user create integration_editor editor@example.invalid --role=editor --user_pass="$TEST_EDITOR_PASSWORD"
+mkdir -p "$SANDBOX/site/wp-content/mu-plugins"
+cp "$REPO/tests/wordpress/session-fixture.php" "$SANDBOX/site/wp-content/mu-plugins/knokspack-integration.php"
 php -S 127.0.0.1:8091 -t "$SANDBOX/site" >"$SANDBOX/server.log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
@@ -65,6 +72,8 @@ status="$(curl --silent --output "$SANDBOX/rejected.json" --write-out '%{http_co
 status="$(curl --silent --output "$SANDBOX/guest-backup.json" --write-out '%{http_code}'   --data-urlencode action=knokspack_restore_backup "$endpoint")"
 [[ "$status" == 400 ]]
 echo "PASS: real HTTP consent grant/withdrawal, collection gate, cross-origin rejection and guest restore denial"
+node "$REPO/tests/wordpress/authenticated.mjs"
+wp eval 'global $wpdb; if ((int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}knokspack_analytics_events") !== 1) { throw new RuntimeException("Unexpected event rows after consent withdrawal"); }'
 wp plugin deactivate knokspack
 wp eval 'if (get_option("knokspack_integration_marker") !== "synthetic-only") { throw new RuntimeException("Deactivation lost fixture data"); }'
 echo "PASS: packaged plugin activation/deactivation preserved fixture data"
