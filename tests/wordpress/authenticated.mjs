@@ -4,14 +4,25 @@ const origin = 'http://127.0.0.1:8091';
 assert.equal(process.env.KNOKSPACK_INTEGRATION_TEST, '1', 'CI fixture must be explicitly enabled');
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Only disposable CI is supported');
 
+// Every transport target is literal; neither path arguments nor redirects can select another host.
+const transports = new Map([
+    ['/wp-login.php', (options) => fetch('http://127.0.0.1:8091/wp-login.php', options)],
+    ['/wp-admin/admin-ajax.php', (options) => fetch('http://127.0.0.1:8091/wp-admin/admin-ajax.php', options)],
+    ['/wp-admin/admin.php?page=knokspack', (options) => fetch('http://127.0.0.1:8091/wp-admin/admin.php?page=knokspack', options)],
+    ['/index.php?rest_route=/knokspack/v1/overview', (options) => fetch('http://127.0.0.1:8091/index.php?rest_route=/knokspack/v1/overview', options)],
+    ['/index.php?rest_route=/knokspack/v1/ai/status', (options) => fetch('http://127.0.0.1:8091/index.php?rest_route=/knokspack/v1/ai/status', options)],
+]);
+
 class Session {
     cookies = new Map();
 
     async request(path, { form, nonce } = {}) {
+        const send = transports.get(path);
+        assert.ok(send, 'Only explicitly allowed loopback fixture routes may be requested');
         const headers = { Cookie: [...this.cookies].map(([key, value]) => `${key}=${value}`).join('; ') };
         if (nonce !== undefined) headers['X-WP-Nonce'] = nonce;
         if (form !== undefined) headers.Origin = origin;
-        const response = await fetch(origin + path, {
+        const response = await send({
             method: form === undefined ? 'GET' : 'POST',
             body: form === undefined ? undefined : new URLSearchParams(form),
             headers,
@@ -53,6 +64,8 @@ class Session {
 }
 
 const guest = new Session();
+await assert.rejects(() => guest.request('https://example.invalid/'), /Only explicitly allowed/);
+await assert.rejects(() => guest.request('//example.invalid/'), /Only explicitly allowed/);
 assert.equal((await guest.ajax('knokspack_integration_session')).status, 400, 'Guest cannot obtain authenticated fixture nonces');
 
 const admin = new Session();
