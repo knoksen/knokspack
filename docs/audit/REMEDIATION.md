@@ -83,3 +83,5 @@ Revision `b850fb610ed07dde9b3edc75c6150efecdc0dd0d` passed both WordPress matrix
 This supersedes the earlier unverified administrator cookie/REST-nonce handshake and these specific AJAX paths. Only test code/fixtures changed; no application security check was bypassed or weakened. The guarded session fixture is excluded from packaging and outgoing fixture mail is blocked. See [scope and fixture safeguards](../../tests/wordpress/README.md).
 
 Still unverified: other privileged feature paths, production-specific cache/TLS behavior, complete database export semantics across schemas/engines, encrypted/off-site storage, archive authentication/extraction/SQL preflight, and actual restore/rollback. Restore remains disabled; no merge, staging deployment or production action is performed.
+
+The authenticated test client's HTTP transport is now restricted to five literal loopback routes with redirects disabled. External absolute/protocol-relative targets are rejected before network calls. This resolves the new test-client URL warning through stricter isolation, not an analyzer exclusion. Results for subsequent revisions remain available on PR #53.
