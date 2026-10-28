@@ -16,7 +16,7 @@ describe('analytics preference controls', () => {
         </details>`;
         window.knokspackAnalyticsConsent = { ajaxUrl: '/wp-admin/admin-ajax.php', nonce: 'fixture' };
         window.fetch = jest.fn();
-        require('../analytics-consent.js');
+        require('../../../assets/js/analytics-consent.js');
     });
 
     afterEach(() => {
