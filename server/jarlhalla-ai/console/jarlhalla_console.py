@@ -27,8 +27,10 @@ FOCUS = {'general':'Tverrfaglig samarbeid.', 'building':'Arkitektur, konstruksjo
 @router.get('/knokspack/{asset:path}')
 def knokspack(asset: str):
     root = Path(__file__).with_name('knokspack').resolve()
-    file = (root / (asset or 'index.html')).resolve()
-    if not file.is_relative_to(root) or not file.is_file():
+    files = {p.relative_to(root).as_posix(): p for p in root.rglob('*')
+             if p.is_file() and p.resolve().is_relative_to(root)}
+    file = files.get(asset or 'index.html')
+    if file is None:
         raise HTTPException(404, 'Filen finnes ikke')
     return FileResponse(file, headers={'Cache-Control':'no-store'})
 
