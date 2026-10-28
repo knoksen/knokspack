@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "repository": "knoksen/knokspack",
+  "revision": "ce004de36be0159c765c3e5b9e53d3ebf86fc84c",
+  "environment": "offline-demo",
+  "checks": [
+    {
+      "name": "ci",
+      "status": "UNKNOWN",
+      "revision": "ce004de36be0159c765c3e5b9e53d3ebf86fc84c",
+      "observed_at": "2026-10-28T04:00:00Z",
+      "evidence_ref": "synthetic/not-a-live-measurement"
+    }
+  ]
+}
