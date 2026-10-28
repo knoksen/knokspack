@@ -63,6 +63,9 @@ jobs:
             find modules includes -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
           fi
 
+      - name: Run isolated PHP regressions
+        run: php tests/php/release_regressions.php
+
       - name: Run PHPStan (if installed)
         run: |
           if [ -f vendor/bin/phpstan ]; then

@@ -2,8 +2,6 @@
 if (!defined('ABSPATH')) exit;
 
 class Knokspack_Stats_Admin {
-    private $options;
-
     public function __construct() {
         add_action('admin_menu', array($this, 'add_admin_menu'));
         add_action('admin_init', array($this, 'init_settings'));
@@ -125,7 +123,7 @@ class Knokspack_Stats_Admin {
         $retention_days = isset($options['retention_days']) ? absint($options['retention_days']) : 90;
         ?>
         <input type='number' name='knokspack_stats_settings[retention_days]'
-            value='<?php echo esc_attr($retention_days); ?>' min='1' max='365' step='1'>
+            value='<?php echo esc_attr((string) $retention_days); ?>' min='1' max='365' step='1'>
         <p class="description">
             <?php _e('Number of days to keep detailed analytics data. Default is 90 days.', 'knokspack'); ?>
         </p>

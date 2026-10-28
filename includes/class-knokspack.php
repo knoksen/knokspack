@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
  * Main Knokspack Class.
  */
 final class Knokspack {
-    /** @var Knokspack single instance */
+    /** @var Knokspack|null single instance */
     private static $instance = null;
 
     /**

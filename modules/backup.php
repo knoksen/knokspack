@@ -15,7 +15,7 @@ class Knokspack_Backup {
                 'wp-content/backups',
                 'wp-content/uploads/large-files'
             )
-        ), array());
+        ));
 
         // Initialize backup system
         add_action('init', array($this, 'init_backup'));
