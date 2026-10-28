@@ -21,6 +21,8 @@ cp -a "$SANDBOX/core/wordpress/." "$SANDBOX/site/"
 wp core verify-checksums --version="$TEST_WORDPRESS_VERSION" --locale=en_US
 wp config create --dbname=knokspack_integration --dbuser=knokspack_integration   --dbpass="$TEST_DB_PASSWORD" --dbhost=127.0.0.1:3306 --extra-php <<'PHP'
 define('KNOKSPACK_INTEGRATION_TEST', true);
+define('WP_HOME', 'http://127.0.0.1:8091');
+define('WP_SITEURL', 'http://127.0.0.1:8091');
 define('KNOKSPACK_PRIVATE_BACKUP_DIR', getenv('TEST_PRIVATE_DIR'));
 define('DISABLE_WP_CRON', true);
 define('WP_HTTP_BLOCK_EXTERNAL', true);
