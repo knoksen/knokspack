@@ -2,7 +2,7 @@
 /** Real WordPress/SQL checks, only against the CI-created disposable installation. */
 if (defined('KNOKSPACK_INTEGRATION_TEST') === false || KNOKSPACK_INTEGRATION_TEST !== true
     || DB_NAME !== 'knokspack_integration' || DB_USER !== 'knokspack_integration'
-    || home_url() !== 'http://127.0.0.1:8091') {
+    || home_url() !== 'https://127.0.0.1:8092') {
     throw new RuntimeException('Refusing unrecognized fixture: ' . json_encode(array(
         'enabled' => defined('KNOKSPACK_INTEGRATION_TEST') === true ? KNOKSPACK_INTEGRATION_TEST : null,
         'database' => DB_NAME, 'database_user' => DB_USER, 'home' => home_url()

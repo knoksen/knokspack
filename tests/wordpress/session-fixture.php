@@ -2,7 +2,7 @@
 /** CI-only nonce/identity fixture, copied only into the disposable site's mu-plugins. */
 if (defined('KNOKSPACK_INTEGRATION_TEST') === false || KNOKSPACK_INTEGRATION_TEST !== true
     || getenv('KNOKSPACK_INTEGRATION_TEST') !== '1' || DB_NAME !== 'knokspack_integration'
-    || DB_USER !== 'knokspack_integration' || home_url() !== 'http://127.0.0.1:8091') {
+    || DB_USER !== 'knokspack_integration' || home_url() !== 'https://127.0.0.1:8092') {
     return;
 }
 // Fixture users must never trigger outgoing mail.

@@ -1,16 +1,16 @@
 import assert from 'node:assert/strict';
 
-const origin = 'http://127.0.0.1:8091';
+const origin = 'https://127.0.0.1:8092';
 assert.equal(process.env.KNOKSPACK_INTEGRATION_TEST, '1', 'CI fixture must be explicitly enabled');
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Only disposable CI is supported');
 
 // Every transport target is literal; neither path arguments nor redirects can select another host.
 const transports = new Map([
-    ['/wp-login.php', (options) => fetch('http://127.0.0.1:8091/wp-login.php', options)],
-    ['/wp-admin/admin-ajax.php', (options) => fetch('http://127.0.0.1:8091/wp-admin/admin-ajax.php', options)],
-    ['/wp-admin/admin.php?page=knokspack', (options) => fetch('http://127.0.0.1:8091/wp-admin/admin.php?page=knokspack', options)],
-    ['/index.php?rest_route=/knokspack/v1/overview', (options) => fetch('http://127.0.0.1:8091/index.php?rest_route=/knokspack/v1/overview', options)],
-    ['/index.php?rest_route=/knokspack/v1/ai/status', (options) => fetch('http://127.0.0.1:8091/index.php?rest_route=/knokspack/v1/ai/status', options)],
+    ['/wp-login.php', (options) => fetch('https://127.0.0.1:8092/wp-login.php', options)],
+    ['/wp-admin/admin-ajax.php', (options) => fetch('https://127.0.0.1:8092/wp-admin/admin-ajax.php', options)],
+    ['/wp-admin/admin.php?page=knokspack', (options) => fetch('https://127.0.0.1:8092/wp-admin/admin.php?page=knokspack', options)],
+    ['/index.php?rest_route=/knokspack/v1/overview', (options) => fetch('https://127.0.0.1:8092/index.php?rest_route=/knokspack/v1/overview', options)],
+    ['/index.php?rest_route=/knokspack/v1/ai/status', (options) => fetch('https://127.0.0.1:8092/index.php?rest_route=/knokspack/v1/ai/status', options)],
 ]);
 
 class Session {
