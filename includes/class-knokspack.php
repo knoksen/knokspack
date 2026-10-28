@@ -70,24 +70,6 @@ final class Knokspack {
     }
 
     /**
-     * What type of request is this?
-     * @param string $type
-     * @return bool
-     */
-    private function is_request($type) {
-        switch ($type) {
-            case 'admin':
-                return is_admin();
-            case 'ajax':
-                return defined('DOING_AJAX');
-            case 'cron':
-                return defined('DOING_CRON');
-            case 'frontend':
-                return (!is_admin() || defined('DOING_AJAX')) && !defined('DOING_CRON');
-        }
-    }
-
-    /**
      * Initialize plugin
      */
     public function init() {

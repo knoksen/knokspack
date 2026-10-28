@@ -14,7 +14,15 @@ This candidate combines draft PRs #48–#51 without merging them and adds bounde
 
 Seven isolated PHP regression cases PASS: legitimate sorting/rendered results, hostile SQL sort input, malformed request values, literal search wildcard handling, empty results/page offset, backup defaults/saved overrides and SPL registration/unrelated class behavior. Tests use doubles and perform no database/network/filesystem mutations. They are not WordPress staging acceptance tests.
 
-PHP syntax checks pass. PHPStan completes with 46 remaining file errors (previous candidate: 54), zero general errors, unchanged level. Outstanding findings include dynamic plugin constants, legacy block argument schema mismatch, unused/incomplete request helper, missing legacy menu callbacks and an unimplemented social adapter. These remain blocking; no ignores or baseline is added.
+The first runtime commit reduced PHPStan from 54 to 46 findings. The follow-up completes with zero findings, unchanged level, no ignores, exclusions or error baseline:
+
+- Analysis-only bootstrap checks the actual source declarations before defining the four dynamically initialized constants. Paths refer to the checkout; URL is explicitly a reserved analysis.invalid fixture, not a production value. Database version is read from its source declaration. Plugin startup, WordPress configuration and secrets are never loaded.
+- A narrowly scoped block-argument PHPDoc corrects the generated stubs' sealed shape for legacy handles supported by WordPress. Official behavior: https://developer.wordpress.org/reference/functions/register_block_type/ and https://developer.wordpress.org/reference/classes/wp_block_type/__construct/ . Existing runtime registrations are unchanged. Positive fixtures pass; invalid callback, invalid legacy handle type and unknown constant still fail with expected diagnostics.
+- Remove an uncalled private request helper with no complete return contract. No public API is removed.
+- Existing menu callbacks are kept; absent callbacks and templates receive an administrator-only, escaped unconfigured message. All 19 legacy template routes and 14 icon-menu routes remain. Readable existing templates are still included; no replacement content is fabricated.
+- The unimplemented Twitter adapter returns a structured WP_Error and emits a failure event instead of silently doing nothing. It transmits no credentials and does not implement publishing.
+
+Validation now includes 12 isolated PHP behavior/security cases plus positive/negative analysis fixtures. This does not certify actual WordPress staging or production compatibility; those gates still require server access and real regression evidence.
 
 The public homepage and gateway health returned HTTP 200; gateway reports ok=true/version=1.1.0. Admin returns 401. These are availability observations, not deployment/backup/security acceptance.
 

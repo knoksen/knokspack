@@ -21,6 +21,23 @@ function wp_parse_args($args, $defaults = []) {
 function sanitize_text_field($value) { return strip_tags($value); }
 function wp_unslash($value) { return stripslashes($value); }
 function __($text, $domain = null) { return $text; }
+function esc_html__($text, $domain = null) { return htmlspecialchars($text, ENT_QUOTES); }
+function current_user_can($capability) { return $GLOBALS['test_admin'] ?? false; }
+function wp_die($message) { throw new RuntimeException($message); }
+function do_action(...$args) { $GLOBALS['test_events'][] = $args; }
+function get_post($id) { return (object) ['post_status' => 'publish', 'post_content' => 'Fixture']; }
+function get_the_title($id) { return 'Fixture title'; }
+function get_permalink($id) { return 'https://example.invalid/post'; }
+function wp_trim_words($text, $count) { return $text; }
+function wp_remote_post(...$args) { throw new RuntimeException('Unexpected external request'); }
+function is_wp_error($value) { return $value instanceof WP_Error; }
+function add_menu_page(...$args) { $GLOBALS['test_menus'][] = $args; }
+function knokspack_render_ai_page() {}
+class WP_Error {
+    public $code;
+    public $message;
+    public function __construct($code, $message) { $this->code = $code; $this->message = $message; }
+}
 
 class WP_List_Table {
     public $items = [];
@@ -54,6 +71,10 @@ class TestDatabase {
 require dirname(__DIR__, 2) . '/modules/crm/class-knokspack-crm-contacts-table.php';
 require dirname(__DIR__, 2) . '/modules/backup.php';
 require dirname(__DIR__, 2) . '/includes/class-knokspack-autoloader.php';
+require dirname(__DIR__, 2) . '/modules/icons.php';
+require dirname(__DIR__, 2) . '/modules/marketing.php';
+require dirname(__DIR__, 2) . '/tools/phpstan/bootstrap.php';
+require dirname(__DIR__, 2) . '/modules/menu.php';
 
 $checks = 0;
 function run_case($name, $callback) {
@@ -119,5 +140,61 @@ run_case('autoload registers and ignores unrelated classes', function () {
     $loader->autoload('Unrelated_Missing_Class');
     check(!class_exists('Unrelated_Missing_Class', false), 'unrelated class changed');
     spl_autoload_unregister([$loader, 'autoload']);
+});
+run_case('legacy menu routes preserve valid callbacks and recover missing callbacks', function () {
+    $GLOBALS['test_menus'] = [];
+    $icons = new Knokspack_Icons();
+    $icons->register_menu_icons();
+    check(count($GLOBALS['test_menus']) === 14, 'existing menu routes changed');
+    check($GLOBALS['test_menus'][0][4] === 'knokspack_render_ai_page', 'valid callback was replaced');
+    foreach ($GLOBALS['test_menus'] as $menu) {
+        check(is_callable($menu[4]), 'unusable menu callback registered');
+    }
+});
+run_case('unconfigured menu page checks authorization', function () {
+    $icons = new Knokspack_Icons();
+    $GLOBALS['test_admin'] = false;
+    $denied = false;
+    try { $icons->render_unavailable_page(); } catch (RuntimeException $error) { $denied = true; }
+    check($denied, 'unauthorized fallback page access');
+    $GLOBALS['test_admin'] = true;
+    ob_start();
+    $icons->render_unavailable_page();
+    $html = ob_get_clean();
+    check(str_contains($html, 'not configured'), 'missing module is not clearly marked');
+});
+run_case('unimplemented Twitter reports failure without transmitting credentials', function () {
+    $GLOBALS['test_events'] = [];
+    $GLOBALS['test_options']['knokspack_twitter_keys'] = ['fixture-secret-not-real'];
+    $marketing = new Knokspack_Marketing();
+    $method = new ReflectionMethod($marketing, 'post_to_social_media');
+    $method->invoke($marketing, 7);
+    $event = $GLOBALS['test_events'][0] ?? [];
+    check(($event[0] ?? '') === 'knokspack_social_post_failed', 'silent social failure');
+    check($event[1] === 'twitter' && $event[2] === 7, 'failure attribution lost');
+    check($event[3] instanceof WP_Error, 'failure is not structured');
+    check(!str_contains(json_encode($event), 'fixture-secret-not-real'), 'credentials leaked in event');
+});
+run_case('missing legacy templates keep every route usable without include warnings', function () {
+    $GLOBALS['test_admin'] = true;
+    $menu = new Knokspack_Menu();
+    set_error_handler(function ($severity, $message) { throw new RuntimeException($message); });
+    try {
+        foreach (['dashboard','security','firewall','malware_scan','activity_log','performance',
+                  'cdn','cache','backup','scheduled_backups','ai','growth','newsletter','social',
+                  'promotion','crm','analytics','search','settings'] as $route) {
+            ob_start();
+            $menu->{'render_' . $route}();
+            $output = ob_get_clean();
+            check(str_contains($output, 'not configured'), 'missing template must be explicit');
+        }
+    } finally { restore_error_handler(); }
+});
+run_case('legacy template route denies non-administrators', function () {
+    $GLOBALS['test_admin'] = false;
+    $denied = false;
+    try { (new Knokspack_Menu())->render_dashboard(); }
+    catch (RuntimeException $error) { $denied = true; }
+    check($denied, 'legacy route bypassed authorization');
 });
 echo "$checks regression cases passed.\n";
