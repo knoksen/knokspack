@@ -1,0 +1,612 @@
+{
+  "observed_date": "2026-10-28",
+  "coverage": "Bounded inventory, not exhaustive runtime or account audit",
+  "repositories": [
+    {
+      "repository": "knoksen/BIMserver",
+      "default_branch": "master",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/terraform-google-three-tier-web-app",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/-ConstructFlow",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/attest-build-provenance",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/archeng-nexus",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/StampExpert",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/starcoder2-api",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/ebike-assistant-app",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/router",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/darkbert-dashboard",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Terratek-game",
+      "default_branch": "master",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Terratek_Project_2025",
+      "default_branch": "master",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/terratek-monetization",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Codex_ai",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/starcoder2",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/StarARCH",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/terratek-dyad",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/plex",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/earthnullschool",
+      "default_branch": "master",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Interactive-Planet-Earth",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/knokspack",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/jarlhalla-ultracc-starter",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/BERT-Dashboard",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/knoksDJ",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/CyberSec-Dash",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/studio",
+      "default_branch": "master",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/IdeaFlow",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Code-Clarity-Compass",
+      "default_branch": "master",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Call-Charmer",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/FlowCraft",
+      "default_branch": "master",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Code-Alchemist",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/NarratorAI",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Cosmic-Compass",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/DeepCanvas",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Firebase-Glimpse",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Gemini-Vision",
+      "default_branch": "Main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/dictation-studio",
+      "default_branch": "Main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/video-to-learning-app",
+      "default_branch": "Main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/anarchist-cookbook-digital-archive",
+      "default_branch": "Main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/cyber-agents-dashboard",
+      "default_branch": "Main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/jarlhalla-portfolio",
+      "default_branch": "Main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/pdf-to-podcast",
+      "default_branch": "Main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/safehub-anti-manual",
+      "default_branch": "Main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/PromptCraft-Studio",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/PlumbRight",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Low-Code-App-Blueprint-Generator",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/LobbySpy_AllIn_v2",
+      "default_branch": "Main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/my-astro-blog",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/HomeCanvas",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/knoksPix",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/deviant_art_protector",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Friend-SOS",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Deep-Dive-Article-Generator",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/appletv_controller",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/dynamo",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/knoksVision",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Kontroll_07",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Drfoelergodt",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/EIQForge",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/JarlhallaCCW",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/digitalbeingv2",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/web-extractor-pro",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/i2psourceknoksen",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/I2P_knoks",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/knoks-gallery-steward",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/AIRS",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/VCGknoks",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/vibe-kanbanEDknoks",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Biobuildknoksenlab",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/Twinknoks",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/NebulaI2P",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/JaerenbyNight",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/ALBT",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/MykoKnoks",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/KH0L3",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/Friend-SOS-62587",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/kosmisk-evolusjon",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/MonDigiSec",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/AgentDash",
+      "default_branch": "main",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/OBTknoks",
+      "default_branch": "master",
+      "visibility": "public"
+    },
+    {
+      "repository": "knoksen/DeviknoksMaint",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/JHLG_Dash",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/JHLluminus",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/cOSMICKNOKS",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/JHLgame",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/JarlhallaARC",
+      "default_branch": "main",
+      "visibility": "private"
+    },
+    {
+      "repository": "knoksen/JHLGI",
+      "default_branch": "main",
+      "visibility": "private"
+    }
+  ],
+  "baselines": [
+    {
+      "repository": "knoksen/archeng-nexus",
+      "commit": "db03824928f179e6c8c4a38ae732cb73afb3dfb3",
+      "tree_truncated": false
+    },
+    {
+      "repository": "knoksen/JHLGI",
+      "commit": "3d625b4a1755d21204c80b0aab355f96225e7b21",
+      "tree_truncated": false
+    },
+    {
+      "repository": "knoksen/JHLgame",
+      "commit": "51ee232265dadbf72ccb6ce0aa9a2bd4baf6f148",
+      "tree_truncated": false
+    },
+    {
+      "repository": "knoksen/JarlhallaARC",
+      "commit": "a53eecd58fa85c1d70a490cf495e8fcaec3fc5db",
+      "tree_truncated": false
+    },
+    {
+      "repository": "knoksen/knokspack",
+      "commit": "ce004de36be0159c765c3e5b9e53d3ebf86fc84c",
+      "tree_truncated": false
+    },
+    {
+      "repository": "knoksen/JarlhallaCCW",
+      "commit": "eb56ecec69e79cc039240a088b2afbcd1f897103",
+      "tree_truncated": false
+    }
+  ],
+  "branch_observations": [
+    {
+      "repository": "knoksen/archeng-nexus",
+      "protected": true,
+      "required_checks": [
+        "build"
+      ],
+      "detailed_protection": "403 integration access denied",
+      "ci": [
+        {
+          "id": 40614305304,
+          "sha": "db03824928f179e6c8c4a38ae732cb73afb3dfb3",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/archeng-nexus/actions/runs/40614305304",
+          "name": "Running Copilot Code Review"
+        },
+        {
+          "id": 40614297585,
+          "sha": "db03824928f179e6c8c4a38ae732cb73afb3dfb3",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/archeng-nexus/actions/runs/40614297585",
+          "name": "Deploy static site"
+        },
+        {
+          "id": 40611338505,
+          "sha": "67ae30b4387ab7b9efd7def53481b3276be4f2ac",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/archeng-nexus/actions/runs/40611338505",
+          "name": "Deploy static site"
+        }
+      ]
+    },
+    {
+      "repository": "knoksen/JHLGI",
+      "protected": true,
+      "required_checks": [
+        "build-test",
+        "firestore-rules"
+      ],
+      "detailed_protection": "403 integration access denied",
+      "ci": [
+        {
+          "id": 40631267604,
+          "sha": "3d625b4a1755d21204c80b0aab355f96225e7b21",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JHLGI/actions/runs/40631267604",
+          "name": "Running Copilot Code Review"
+        },
+        {
+          "id": 40631263568,
+          "sha": "3d625b4a1755d21204c80b0aab355f96225e7b21",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JHLGI/actions/runs/40631263568",
+          "name": "CI"
+        },
+        {
+          "id": 40614251027,
+          "sha": "fc210372ac5aab415de9b86f93a66c3d890022ae",
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/knoksen/JHLGI/actions/runs/40614251027",
+          "name": "CI"
+        }
+      ]
+    },
+    {
+      "repository": "knoksen/JHLgame",
+      "protected": true,
+      "required_checks": [
+        "build-test"
+      ],
+      "detailed_protection": "403 integration access denied",
+      "ci": [
+        {
+          "id": 40631233669,
+          "sha": "51ee232265dadbf72ccb6ce0aa9a2bd4baf6f148",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JHLgame/actions/runs/40631233669",
+          "name": "CI"
+        },
+        {
+          "id": 40614171622,
+          "sha": "c0695627bec989dc78334f0e65c1e5ee619e4e5c",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JHLgame/actions/runs/40614171622",
+          "name": "Running Copilot Code Review"
+        },
+        {
+          "id": 40614166735,
+          "sha": "c0695627bec989dc78334f0e65c1e5ee619e4e5c",
+          "status": "completed",
+          "conclusion": "failure",
+          "url": "https://github.com/knoksen/JHLgame/actions/runs/40614166735",
+          "name": "CI"
+        }
+      ]
+    },
+    {
+      "repository": "knoksen/JarlhallaARC",
+      "protected": true,
+      "required_checks": [
+        "build-test"
+      ],
+      "detailed_protection": "403 integration access denied",
+      "ci": [
+        {
+          "id": 40631203760,
+          "sha": "a53eecd58fa85c1d70a490cf495e8fcaec3fc5db",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JarlhallaARC/actions/runs/40631203760",
+          "name": "Running Copilot Code Review"
+        },
+        {
+          "id": 40631198607,
+          "sha": "a53eecd58fa85c1d70a490cf495e8fcaec3fc5db",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JarlhallaARC/actions/runs/40631198607",
+          "name": "CI"
+        },
+        {
+          "id": 40614052729,
+          "sha": "4090217414a017f8e2f8b7996cfc7e4e99d05354",
+          "status": "completed",
+          "conclusion": "success",
+          "url": "https://github.com/knoksen/JarlhallaARC/actions/runs/40614052729",
+          "name": "Running Copilot Code Review"
+        }
+      ]
+    }
+  ]
+}
