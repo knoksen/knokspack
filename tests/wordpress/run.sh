@@ -37,10 +37,10 @@ wp core install --url=http://127.0.0.1:8091 --title=Knokspack-integration   --ad
 unzip -q "$REPO/build/knokspack.zip" -d "$SANDBOX/site/wp-content/plugins"
 wp plugin activate knokspack
 wp eval-file "$REPO/tests/wordpress/assertions.php"
-wp user update integration_subscriber --user_pass="$TEST_SUBSCRIBER_PASSWORD"
-wp user create integration_editor editor@example.invalid --role=editor --user_pass="$TEST_EDITOR_PASSWORD"
 mkdir -p "$SANDBOX/site/wp-content/mu-plugins"
 cp "$REPO/tests/wordpress/session-fixture.php" "$SANDBOX/site/wp-content/mu-plugins/knokspack-integration.php"
+wp user update integration_subscriber --user_pass="$TEST_SUBSCRIBER_PASSWORD"
+wp user create integration_editor editor@example.invalid --role=editor --user_pass="$TEST_EDITOR_PASSWORD"
 php -S 127.0.0.1:8091 -t "$SANDBOX/site" >"$SANDBOX/server.log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT

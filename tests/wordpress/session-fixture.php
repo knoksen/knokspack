@@ -5,6 +5,8 @@ if (defined('KNOKSPACK_INTEGRATION_TEST') === false || KNOKSPACK_INTEGRATION_TES
     || DB_USER !== 'knokspack_integration' || home_url() !== 'http://127.0.0.1:8091') {
     return;
 }
+// Fixture users must never trigger outgoing mail.
+add_filter('pre_wp_mail', '__return_true');
 add_action('wp_ajax_knokspack_integration_session', function () {
     $data = array(
         'user_id' => get_current_user_id(),
