@@ -20,15 +20,18 @@ class Knokspack_Stats {
     /** @var string Database version */
     const DB_VERSION = '1.0.0';
 
+    private const CONSENT_COOKIE = 'knokspack_analytics_consent';
+    private const CONSENT_MAX_AGE = 15552000;
+
     /** @var array Plugin settings */
     private $options;
 
     /** @var array Default plugin settings */
     private $default_options = array(
-        'enable_tracking' => true,
-        'track_visitors' => true,
-        'track_page_views' => true,
-        'track_events' => true,
+        'enable_tracking' => false,
+        'track_visitors' => false,
+        'track_page_views' => false,
+        'track_events' => false,
         'retention_days' => 90
     );
 
@@ -49,6 +52,11 @@ class Knokspack_Stats {
         // AJAX handlers
         add_action('wp_ajax_knokspack_get_stats', array($this, 'ajax_get_stats'));
         add_action('wp_ajax_knokspack_track_event', array($this, 'ajax_track_event'));
+        add_action('wp_ajax_knokspack_set_analytics_consent', array($this, 'ajax_set_analytics_consent'));
+        add_action('wp_ajax_nopriv_knokspack_set_analytics_consent', array($this, 'ajax_set_analytics_consent'));
+
+        add_action('wp_footer', array($this, 'render_analytics_consent_controls'));
+        add_action('wp_enqueue_scripts', array($this, 'enqueue_analytics_consent_script'));
         
         // Cleanup old data
         add_action('knokspack_daily_cleanup', array($this, 'cleanup_old_data'));
@@ -154,18 +162,23 @@ class Knokspack_Stats {
             $date
         ));
 
-        // Keep daily stats for historical records
+        // Aggregate records follow the same retention policy.
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$wpdb->prefix}knokspack_analytics_daily WHERE stat_date < %s",
+            substr($date, 0, 10)
+        ));
     }
 
     public function track_page_view() {
         if (is_admin() || empty($this->options['track_page_views']) || empty($this->options['enable_tracking'])) return;
+        if ($this->get_analytics_consent() !== 'granted') return;
         if (wp_doing_ajax() || wp_doing_cron() || (defined('REST_REQUEST') && REST_REQUEST) || is_feed() || is_404() || is_preview()) return;
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') return;
         if (current_user_can('edit_posts')) return; // don't count the site's own editors
         if (preg_match('/bot|crawl|spider|slurp|preview|monitor/i', $this->user_agent())) return;
 
         global $wpdb;
-        $visitor_id = $this->get_visitor_id();
+        $visitor_id = !empty($this->options['track_visitors']) ? $this->get_visitor_id() : '';
 
         $data = array(
             'page_id' => (int) get_queried_object_id(),
@@ -237,8 +250,12 @@ class Knokspack_Stats {
     public function ajax_track_event() {
         check_ajax_referer('knokspack_stats_nonce');
 
-        if (!$this->options['track_events']) {
-            wp_send_json_error('Event tracking is disabled');
+        if (empty($this->options['enable_tracking']) || empty($this->options['track_events'])) {
+            wp_send_json_error('Event tracking is disabled', 403);
+        }
+
+        if ($this->get_analytics_consent() !== 'granted') {
+            wp_send_json_error('Analytics consent is not active', 403);
         }
 
         $event_type = sanitize_key($_POST['event_type']);
@@ -246,7 +263,7 @@ class Knokspack_Stats {
         $event_data = isset($_POST['event_data']) ? sanitize_text_field($_POST['event_data']) : '';
 
         global $wpdb;
-        $visitor_id = $this->get_visitor_id();
+        $visitor_id = !empty($this->options['track_visitors']) ? $this->get_visitor_id() : '';
 
         $data = array(
             'event_type' => $event_type,
@@ -269,6 +286,103 @@ class Knokspack_Stats {
         } else {
             wp_send_json_error('Failed to track event');
         }
+    }
+
+    public function ajax_set_analytics_consent() {
+        if (!check_ajax_referer('knokspack_analytics_consent', 'nonce', false)) {
+            wp_send_json_error('Invalid analytics preference request', 403);
+        }
+
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? wp_parse_url(wp_unslash($_SERVER['HTTP_ORIGIN'])) : false;
+        $site = wp_parse_url(home_url());
+        if (!is_array($origin) || empty($origin['host']) || empty($origin['scheme'])
+            || strtolower($origin['host']) !== strtolower($site['host'])
+            || strtolower($origin['scheme']) !== strtolower($site['scheme'])
+            || ($origin['port'] ?? ($origin['scheme'] === 'https' ? 443 : 80)) !== ($site['port'] ?? ($site['scheme'] === 'https' ? 443 : 80))) {
+            wp_send_json_error('Analytics preference requests must come from this site', 403);
+        }
+
+        $choice = isset($_POST['consent']) ? sanitize_key(wp_unslash($_POST['consent'])) : '';
+        if (!in_array($choice, array('granted', 'denied'), true)) {
+            wp_send_json_error('Invalid analytics preference', 400);
+        }
+
+        $expires = time() + self::CONSENT_MAX_AGE;
+        $signature = wp_hash('knokspack_analytics_consent|' . $choice . '|' . $expires, 'auth');
+        $value = $choice . '|' . $expires . '|' . $signature;
+        $path = defined('COOKIEPATH') && COOKIEPATH ? COOKIEPATH : '/';
+        $domain = defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '';
+
+        if (!setcookie(self::CONSENT_COOKIE, $value, array(
+            'expires' => $expires,
+            'path' => $path,
+            'domain' => $domain,
+            'secure' => is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax'
+        ))) {
+            wp_send_json_error('Could not save analytics preference', 500);
+        }
+
+        $_COOKIE[self::CONSENT_COOKIE] = $value;
+        wp_send_json_success(array('consent' => $choice));
+    }
+
+    public function render_analytics_consent_controls() {
+        if (is_admin()) {
+            return;
+        }
+
+        if (empty($this->options['enable_tracking'])) return;
+        $choice = $this->get_analytics_consent();
+        ?>
+        <details class="knokspack-analytics-preferences" <?php echo $choice === null ? 'open' : ''; ?>>
+            <summary><?php esc_html_e('Analytics preferences', 'knokspack'); ?></summary>
+            <p><?php esc_html_e('Optional, first-party analytics are off until you allow them. Your choice can be changed here at any time.', 'knokspack'); ?></p>
+            <button type="button" data-knokspack-consent="granted"><?php esc_html_e('Allow optional analytics', 'knokspack'); ?></button>
+            <button type="button" data-knokspack-consent="denied"><?php esc_html_e('Keep analytics off / withdraw consent', 'knokspack'); ?></button>
+            <p data-knokspack-consent-status role="status" aria-live="polite"></p>
+        </details>
+        <?php
+    }
+
+    public function enqueue_analytics_consent_script() {
+        if (is_admin() || empty($this->options['enable_tracking'])) {
+            return;
+        }
+
+        wp_enqueue_script(
+            'knokspack-analytics-consent',
+            KNOKSPACK_ASSETS_URL . 'js/analytics-consent.js',
+            array(),
+            KNOKSPACK_VERSION,
+            true
+        );
+        wp_localize_script('knokspack-analytics-consent', 'knokspackAnalyticsConsent', array(
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('knokspack_analytics_consent')
+        ));
+    }
+
+    private function get_analytics_consent() {
+        $value = isset($_COOKIE[self::CONSENT_COOKIE]) ? (string) $_COOKIE[self::CONSENT_COOKIE] : '';
+        $parts = explode('|', $value);
+        if (count($parts) !== 3) {
+            return null;
+        }
+
+        list($choice, $expires, $signature) = $parts;
+        if (!in_array($choice, array('granted', 'denied'), true) || !ctype_digit($expires)) {
+            return null;
+        }
+
+        $expires = (int) $expires;
+        if ($expires < time() || $expires > time() + self::CONSENT_MAX_AGE + 60) {
+            return null;
+        }
+
+        $expected = wp_hash('knokspack_analytics_consent|' . $choice . '|' . $expires, 'auth');
+        return hash_equals($expected, $signature) ? $choice : null;
     }
 
     public function ajax_get_stats() {

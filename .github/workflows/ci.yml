@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
   pull_request:
-    branches: [ main ]
 
 permissions:
   contents: read
@@ -25,10 +24,20 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build --if-present
+        run: npm run build
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Validate package
+        run: npm run package
+
+      - name: Run package and module contract tests
+        run: python -m unittest discover -s tests/package -v
 
       - name: Run tests
-        run: npm test --if-present
+        run: npm test -- --runInBand
 
   php-lint:
     name: PHP lint
@@ -73,18 +82,19 @@ jobs:
       - name: Check positive and negative analysis contracts
         run: python tests/phpstan/check_contract.py
 
-      - name: Run PHPStan (if installed)
-        run: |
-          if [ -f vendor/bin/phpstan ]; then
-            vendor/bin/phpstan analyse modules includes --no-progress --memory-limit=2G
-          else
-            echo 'phpstan not installed; skipping'
-          fi
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse modules includes --no-progress --memory-limit=2G
 
-      - name: Run PHPUnit (if installed)
-        run: |
-          if [ -f vendor/bin/phpunit ]; then
-            vendor/bin/phpunit --version
-          else
-            echo 'phpunit not installed; skipping'
-          fi
+      - name: Run PHPUnit
+        run: vendor/bin/phpunit --bootstrap tests/phpunit/bootstrap.php tests/phpunit
+
+  php-minimum-lint:
+    name: PHP 8.0 syntax compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.0'
+      - run: find modules includes -name '*.php' -print0 | xargs -0 -n1 php -l
+      - run: php -l wp-site-suite.php

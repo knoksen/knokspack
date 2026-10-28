@@ -1,0 +1,53 @@
+# Phase 0 remediation evidence
+
+Observation date: 2026-10-28 (Europe/Oslo). Scope: code, isolated tests and installable ZIP; no production access, deployment, data migration, merge or restore.
+
+## Baseline and preserved work
+
+GitHub main was `ce004de`; the local audit was at `ba6b07f`, four commits ahead, with uncommitted code, audit docs, tests, Codacy instructions and generated metrics. Remote `audit/phase-0-baseline` does not exist. Local audit docs were read and preserved here as historical snapshots.
+
+The local checkout at `C:/Users/knoks/1APPZ/knokspack` was moved to `fix/phase-0-remediation` without stashing, resetting or deleting changes. Additional local conflict resolutions made its 26 Jest tests and web build pass. Resolved inputs: AI service, Vite config, dashboard JSX/imports, CSS and .gitignore. Dashboard resolution retained live API data rather than conflicting mock metrics. These local-only fixes are not copied over the newer reviewed frontend.
+
+Remote PR #52 (`fix/php-runtime-release-blockers`, `226b099de11dce29676fbf7dcfc18dc8296d8b70`) already has a clean frontend and PHP fixes, analysis context and governance work. This remediation is a **stacked PR targeting that branch**. Preserve #52 and review it separately before integration to main. No local desktop binaries or divergent commits are included. The root plugin source is authoritative; the nested tree exists only in the divergent local history, not this base.
+
+## Changes
+
+- Retain site settings and existing data; new core/runtime analytics defaults are off. Existing enabled installations also require a signed, unexpired visitor opt-in. Missing, forged, expired or denied consent rejects collection; withdrawal prevents subsequent page/event collection. Preferences are same-origin, nonce checked, HttpOnly/SameSite cookies with Secure on HTTPS. Consent UI appears only when site analytics is enabled. Aggregate retention follows detailed retention; no migration runs during this work.
+- Restore fails closed with `restore_disabled` before archive reads, extraction, file writes or SQL execution. Removed unreachable destructive restore helpers. This is containment, **not a completed restore implementation**.
+- Creation requires the existing configured backup directory to match `KNOKSPACK_PRIVATE_BACKUP_DIR`, outside `ABSPATH`; invalid types or missing ZipArchive fail before DB records. Symlink file sources are skipped, source paths stay within WordPress, and copy/archive/manifest failures are surfaced. Deletion and retention resolve real paths within that explicitly designated private root and reject links, non-ZIP files and outside paths. Legacy archives/records outside it are preserved.
+- Cross-platform `scripts/package.py` builds only allowlisted root inputs, omits empty module stubs, rejects linked sources, validates archive contents against source bytes and atomically replaces only the target ZIP. It preserves unrelated build outputs and ignores historical nested source trees. `scripts/package.sh` delegates to the same implementation. README versions/requirements corrected.
+- Nine default loaded PHP modules remain unchanged. Static contract checks cover their list and nonempty source files; omitted modules are not automatically activated. The historical module matrix is explicitly marked historical. Runtime activation of every module is still unverified.
+- CI now actually runs PHPUnit, requires PHPStan, validates packaging and module contracts, and adds PHP 8.0 syntax coverage. Existing PHP 8.4 isolated regressions and positive/negative analysis contracts remain enabled.
+
+## Executed local evidence
+
+Windows, Node dependencies installed from unchanged lockfile (`npm ci --ignore-scripts`), PHP 8.4.27 portable test runtime and Composer verified against official SHA-256 metadata. No global installation or production configuration change.
+
+| Command/check | Observed result |
+| --- | --- |
+| `npm test -- --runInBand` | 4 suites, 26 tests pass |
+| `npm run package` | Vite build passes; 39 canonical files validated in installable ZIP |
+| `python -m unittest discover -s tests/package -v` | 3 pass: canonical source/nested exclusion, preserve prior ZIP on failure, nine-module registration contract |
+| `php vendor/phpunit/phpunit/phpunit --bootstrap tests/phpunit/bootstrap.php tests/phpunit` (mbstring enabled) | 13 tests / 29 assertions pass; consent and fail-closed backup cases, private path/traversal boundaries |
+| `php tests/php/release_regressions.php` | 12 pre-existing runtime/security cases pass |
+| `php vendor/phpstan/phpstan/phpstan analyse modules includes --no-progress --memory-limit=2G` | 0 errors, unchanged level 5, no suppressions |
+| `python tests/phpstan/check_contract.py` | positive fixture passes; negative fixture retains 3 expected diagnostics |
+| PHP syntax: includes, modules, new PHPUnit fixtures and entrypoint | Pass on PHP 8.4.27; PHP 8.0 added to CI, not claimed locally |
+| `git diff --check` | Pass |
+
+Tests use doubles and temporary synthetic fixtures. Windows may disallow symlink creation: the deletion test always verifies sibling/traversal/valid ZIP boundaries, and exercises symlinks only if permitted. No real WordPress DB, web server, backup archive or customer data was used.
+
+## Remaining gates and blind spots
+
+- Staging WordPress activation/upgrades, authenticated and unauthenticated AJAX/REST authorization, cache-aware consent UI and actual browser interaction are not proven by unit tests. Cached nonces may expire; failure stays off. Full-page caching may prevent server-side page-view recording.
+- Restore remains unavailable. Before reenabling, implement authenticated archive manifests/hashes, traversal/absolute-path/symlink/duplicate/zip-bomb rejection, safe SQL preflight and table scope, isolated restore rehearsal, atomic rollback and operator review. Do not run a live restore to test this PR.
+- Private storage is an operator decision: permissions, disk quotas, encryption, other web-server aliases and off-site retention remain unverified. Outside ABSPATH alone cannot prove a directory is not exposed by another virtual host. No legacy backup relocation/deletion is authorized or performed.
+- Module matrix describes registration, not completeness. Disabled/stub modules and frontend demo routes remain unavailable for release claims. AI destination/SSRF policy is a separate open audit item.
+- Existing dependency audit reports 6 low npm advisories; no automatic dependency upgrades applied. Codacy MCP/Trivy tools are unavailable; npm audit and PHPStan are recorded, not a substitute for those checks. To restore Codacy, reset the extension MCP connection or review GitHub Copilot MCP settings; contact Codacy support if it remains unavailable.
+- CI results must be checked on the resulting PR revision. Green checks do not authorize merge or deployment.
+
+## Rollback and operator actions
+
+Before release, review #52 and this stacked diff; preserve the safe restore block until replacement safeguards pass staging. Reverting this PR in production would reintroduce unsafe restore/default collection and is not a safe operational rollback. Use the previously approved artifact with analytics/restore explicitly disabled if rollback is required.
+
+No user-machine command or production approval is required to review this work. Private storage provisioning, staging tests, merge and deployment are deferred owner actions and are not requested or executed here.

@@ -6,7 +6,7 @@ class Knokspack_Backup {
 
     public function __construct() {
         $this->options = wp_parse_args((array) get_option('knokspack_backup_settings', array()), array(
-            'backup_path' => WP_CONTENT_DIR . '/backups/knokspack',
+            'backup_path' => defined('KNOKSPACK_PRIVATE_BACKUP_DIR') ? KNOKSPACK_PRIVATE_BACKUP_DIR : WP_CONTENT_DIR . '/backups/knokspack',
             'schedule_enabled' => false, // opt-in: full backups use disk space
             'frequency' => 'daily',
             'retention_days' => 30,
@@ -64,6 +64,20 @@ class Knokspack_Backup {
 
     public function create_backup($type = 'full') {
         global $wpdb;
+        if (!in_array($type, array('full', 'database', 'files'), true)) {
+            return new WP_Error('invalid_backup_type', 'Unsupported backup type');
+        }
+        // Never rely on .htaccess to protect database dumps on nginx/IIS.
+        $private_root = defined('KNOKSPACK_PRIVATE_BACKUP_DIR') ? realpath(KNOKSPACK_PRIVATE_BACKUP_DIR) : false;
+        $site_root = realpath(ABSPATH);
+        $configured = realpath($this->options['backup_path']);
+        if (!$private_root || !$site_root || $configured !== $private_root || $this->is_within($private_root, $site_root)) {
+            return new WP_Error('private_backup_required', 'Configure an existing private backup directory outside the web root before creating backups.');
+        }
+        if (!class_exists('ZipArchive')) {
+            return new WP_Error('zip_required', 'The PHP zip extension is required.');
+        }
+
         
         $backup_id = time();
         $this->protect_dir($this->options['backup_path']);
@@ -108,7 +122,9 @@ class Knokspack_Backup {
                 'active_theme' => wp_get_theme()->get('Name'),
                 'active_plugins' => get_option('active_plugins')
             );
-            file_put_contents($backup_dir . '/manifest.json', json_encode($manifest));
+            if (file_put_contents($backup_dir . '/manifest.json', json_encode($manifest)) === false) {
+                throw new Exception('Failed to write backup manifest');
+            }
 
             // Create ZIP archive
             $zip = new ZipArchive();
@@ -116,7 +132,9 @@ class Knokspack_Backup {
             
             if ($zip->open($zip_file, ZipArchive::CREATE) === TRUE) {
                 $this->add_dir_to_zip($zip, $backup_dir, basename($backup_dir));
-                $zip->close();
+                if (!$zip->close()) {
+                    throw new Exception('Failed to finish ZIP archive');
+                }
                 
                 // Update backup record
                 $wpdb->update(
@@ -188,16 +206,19 @@ class Knokspack_Backup {
     }
 
     private function backup_files($backup_dir) {
-        $root_dir = ABSPATH;
+        $root_dir = realpath(ABSPATH);
+        if (!$root_dir) throw new Exception('Invalid WordPress root');
         $iterator = new RecursiveIteratorIterator(
             new RecursiveDirectoryIterator($root_dir)
         );
 
         foreach ($iterator as $file) {
-            if ($file->isDir()) continue;
+            if ($file->isDir() || $file->isLink()) continue;
 
-            $path = $file->getPathname();
-            $relative_path = str_replace($root_dir, '', $path);
+            $path = realpath($file->getPathname());
+            if (!$path || !$this->is_within($path, $root_dir)) throw new Exception('Backup source escaped WordPress root');
+            if ($this->is_within($path, $this->options['backup_path'])) continue;
+            $relative_path = str_replace('\\', '/', substr($path, strlen(rtrim($root_dir, '/\\')) + 1));
 
             // Skip excluded paths
             foreach ($this->options['exclude_paths'] as $exclude) {
@@ -209,7 +230,7 @@ class Knokspack_Backup {
             wp_mkdir_p(dirname($backup_path));
 
             // Copy file
-            copy($path, $backup_path);
+            if (!copy($path, $backup_path)) throw new Exception('Failed to copy backup file');
         }
     }
 
@@ -223,14 +244,37 @@ class Knokspack_Backup {
             if ($file->isDir()) continue;
 
             $local_path = $base_path . '/' . substr($file->getPathname(), strlen($path) + 1);
-            $zip->addFile($file->getPathname(), $local_path);
+            if (!$zip->addFile($file->getPathname(), $local_path)) throw new Exception('Failed to add backup file to archive');
         }
+    }
+
+    private function is_within($path, $root) {
+        $path = str_replace('\\', '/', $path);
+        $root = rtrim(str_replace('\\', '/', $root), '/');
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $path = strtolower($path);
+            $root = strtolower($root);
+        }
+        return $path === $root || strpos($path, $root . '/') === 0;
+    }
+
+    /** Persisted paths are untrusted; legacy archives are preserved, not deleted. */
+    private function delete_archive($path) {
+        $root = defined('KNOKSPACK_PRIVATE_BACKUP_DIR') ? realpath(KNOKSPACK_PRIVATE_BACKUP_DIR) : false;
+        $site = realpath(ABSPATH);
+        $real = is_string($path) && $path !== '' ? realpath($path) : false;
+        if (!$root || !$site || !$real || $this->is_within($root, $site) || is_link($path)
+            || !$this->is_within($real, $root) || !is_file($real) || strtolower(pathinfo($real, PATHINFO_EXTENSION)) !== 'zip') {
+            return false;
+        }
+        return unlink($real);
     }
 
     private function cleanup_old_backups() {
         global $wpdb;
         
-        $retention_date = date('Y-m-d H:i:s', strtotime("-{$this->options['retention_days']} days"));
+        $days = max(1, absint($this->options['retention_days']));
+        $retention_date = date('Y-m-d H:i:s', strtotime("-$days days"));
         
         $old_backups = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$wpdb->prefix}knokspack_backups WHERE created_at < %s",
@@ -238,8 +282,8 @@ class Knokspack_Backup {
         ));
 
         foreach ($old_backups as $backup) {
-            if (file_exists($backup->file_path)) {
-                unlink($backup->file_path);
+            if (!$this->delete_archive($backup->file_path)) {
+                continue;
             }
             $wpdb->delete(
                 $wpdb->prefix . 'knokspack_backups',
@@ -249,81 +293,10 @@ class Knokspack_Backup {
     }
 
     public function restore_backup($backup_id) {
-        global $wpdb;
-        
-        $backup = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}knokspack_backups WHERE id = %d",
-            $backup_id
-        ));
-
-        if (!$backup || !file_exists($backup->file_path)) {
-            return new WP_Error('restore_error', 'Backup not found');
-        }
-
-        try {
-            $restore_dir = $this->options['backup_path'] . '/restore_' . $backup_id;
-            wp_mkdir_p($restore_dir);
-
-            // Extract backup
-            $zip = new ZipArchive();
-            if ($zip->open($backup->file_path) === TRUE) {
-                $zip->extractTo($restore_dir);
-                $zip->close();
-
-                // Load manifest
-                $manifest = json_decode(file_get_contents($restore_dir . '/manifest.json'), true);
-
-                // Restore database if exists
-                if (file_exists($restore_dir . '/database.sql')) {
-                    $this->restore_database($restore_dir . '/database.sql');
-                }
-
-                // Restore files if exists
-                if (is_dir($restore_dir . '/files')) {
-                    $this->restore_files($restore_dir . '/files');
-                }
-
-                // Cleanup
-                $this->rrmdir($restore_dir);
-
-                return true;
-            }
-
-            throw new Exception('Failed to extract backup archive');
-
-        } catch (Exception $e) {
-            return new WP_Error('restore_error', $e->getMessage());
-        }
-    }
-
-    private function restore_database($sql_file) {
-        global $wpdb;
-        
-        $sql = file_get_contents($sql_file);
-        $statements = explode(";\n", $sql);
-
-        foreach ($statements as $statement) {
-            if (trim($statement)) {
-                $wpdb->query($statement);
-            }
-        }
-    }
-
-    private function restore_files($files_dir) {
-        $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($files_dir),
-            RecursiveIteratorIterator::SELF_FIRST
+        return new WP_Error(
+            'restore_disabled',
+            __('Restore is temporarily disabled until archive validation, safe extraction, SQL preflight, and rollback safeguards are implemented.', 'knokspack')
         );
-
-        foreach ($iterator as $file) {
-            if ($file->isDir()) continue;
-
-            $relative_path = substr($file->getPathname(), strlen($files_dir) + 1);
-            $restore_path = ABSPATH . $relative_path;
-
-            wp_mkdir_p(dirname($restore_path));
-            copy($file->getPathname(), $restore_path);
-        }
     }
 
     private function rrmdir($dir) {
@@ -331,7 +304,7 @@ class Knokspack_Backup {
             $objects = scandir($dir);
             foreach ($objects as $object) {
                 if ($object != "." && $object != "..") {
-                    if (is_dir($dir . "/" . $object))
+                    if (!is_link($dir . "/" . $object) && is_dir($dir . "/" . $object))
                         $this->rrmdir($dir . "/" . $object);
                     else
                         unlink($dir . "/" . $object);
@@ -388,8 +361,8 @@ class Knokspack_Backup {
         ));
 
         if ($backup) {
-            if (file_exists($backup->file_path)) {
-                unlink($backup->file_path);
+            if (!$this->delete_archive($backup->file_path)) {
+                wp_send_json_error('Backup path is not a validated private archive', 400);
             }
             $wpdb->delete(
                 $wpdb->prefix . 'knokspack_backups',
