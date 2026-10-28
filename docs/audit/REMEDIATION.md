@@ -75,3 +75,11 @@ Verified against the built ZIP, not mocks: plugin activation and all nine module
 The test harness was repaired without weakening its guard: system ZIP extraction preserves long upstream WordPress paths, fixture URLs are explicitly fixed to loopback, and diagnostics expose only non-secret fixture identity. No application-code change was required by this integration pass. The local Docker daemon was unavailable and was not started; CI used disposable services instead.
 
 Remaining release gates: real hosting/cache/TLS behavior, authenticated administrator cookie/REST-nonce and privileged AJAX paths beyond this suite, full module feature tests, encrypted/off-site storage, independently reviewed archive authentication/extraction/SQL preflight and restore/rollback rehearsal. Restore remains disabled. No staging or production deployment is authorized or performed by this suite.
+
+## Cookie-authenticated integration evidence
+
+Revision `b850fb610ed07dde9b3edc75c6150efecdc0dd0d` passed both WordPress matrix jobs in [run 40775046389](https://github.com/knoksen/knokspack/actions/runs/40775046389). Tests now use real HTTP logins, WordPress cookies and the normal admin screen's REST nonce. They verify administrator access, missing/invalid nonce denial, subscriber/editor boundaries, privileged backup AJAX nonce/capability checks, admin create/delete of only the new fixture archive, preserved preceding backup records, restore still disabled, administrator-only analytics reads and exactly one event across opt-in/withdrawal.
+
+This supersedes the earlier unverified administrator cookie/REST-nonce handshake and these specific AJAX paths. Only test code/fixtures changed; no application security check was bypassed or weakened. The guarded session fixture is excluded from packaging and outgoing fixture mail is blocked. See [scope and fixture safeguards](../../tests/wordpress/README.md).
+
+Still unverified: other privileged feature paths, production-specific cache/TLS behavior, complete database export semantics across schemas/engines, encrypted/off-site storage, archive authentication/extraction/SQL preflight, and actual restore/rollback. Restore remains disabled; no merge, staging deployment or production action is performed.

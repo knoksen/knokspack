@@ -26,4 +26,12 @@ Results must be read from the workflow for the exact PR revision; creation of th
 
 Revision `55f605e727a7d8ef93c89d5a88e7117d288df4ab` passed both matrix jobs in [run 40769194764](https://github.com/knoksen/knokspack/actions/runs/40769194764). Each job verified activation/loading/schema, REST dispatch permissions, database-to-ZIP export, HTTP consent collection/withdrawal/origin rejection and data-preserving deactivation. Standard CI and Codacy also passed on that revision.
 
-This supersedes the earlier unit-only coverage for these specific flows. REST role checks use real WordPress request dispatch with fixture users; they do not prove an administrator cookie/REST-nonce login handshake or every privileged AJAX handler. No restore was performed.
+This supersedes the earlier unit-only coverage for these specific flows. That first run used real WordPress REST dispatch with fixture users. The cookie-authenticated extension below supersedes its login-handshake limitation; untested feature paths remain out of scope. No restore was performed.
+
+## Cookie-authenticated extension
+
+Revision `b850fb610ed07dde9b3edc75c6150efecdc0dd0d` passed both matrix jobs in [run 40775046389](https://github.com/knoksen/knokspack/actions/runs/40775046389). The suite now logs in over HTTP with generated temporary passwords and retains real WordPress cookies. It verifies the normal admin page's REST nonce, missing/invalid nonce denial, and subscriber/editor boundaries. Editor AI status is readable without configuring a provider or sending any inference request.
+
+Backup AJAX checks cover invalid admin nonce, insufficient subscriber capability despite a valid subscriber nonce, authorized database-backup creation/deletion of only the new fixture archive, preservation of preceding backup IDs, and restore remaining disabled even for an authorized admin. Analytics checks cover administrator-only stats reads and authenticated event submission before consent, after opt-in, and after withdrawal; the real SQL table must contain exactly one event afterward.
+
+A guarded MU-plugin fixture provides per-session nonces and synthetic admin-only state snapshots. It is copied only into the disposable site from tests/, never the installable ZIP. It has no unauthenticated handler and refuses unrelated site/database identities. Outgoing WordPress mail is intercepted before changing fixture account passwords; external HTTP and cron remain disabled. No credentials, cookies or nonce values are printed.

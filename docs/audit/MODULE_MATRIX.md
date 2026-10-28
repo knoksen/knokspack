@@ -5,8 +5,8 @@
 | Scope | Registration | Release limitation |
 | --- | --- | --- |
 | security, performance, marketing, search, blocks, design | Loaded by root entrypoint | CI activation/loading/schema verified on WordPress 6.0 and 7.1.4; complete feature tests still required |
-| backup | Loaded | Restore unavailable; private-storage checks and real test-database ZIP export pass CI; production storage unverified |
-| stats and admin/stats-admin | Loaded | Site opt-in plus valid visitor consent required; PHP, DOM and real HTTP grant/withdrawal tests pass; hosting/cache behavior unverified |
+| backup | Loaded | Restore unavailable; private-storage, real test-database ZIP export and admin/subscriber AJAX checks pass CI; production storage unverified |
+| stats and admin/stats-admin | Loaded | Site opt-in plus valid visitor consent required; PHP, DOM, cookie-authenticated HTTP and event-consent withdrawal tests pass; hosting/cache behavior unverified |
 | ads, cdn, crm, embed, growth, mobile, promotion, scan, social, video | Intentionally omitted | Stub/unavailable; never enable merely because a frontend route exists |
 | ai.php, dashboard.php, icons.php, menu.php, CRM support class | Not in default module list | Not a module-readiness guarantee; separate class/legacy paths need independent validation |
 | AI integration | Core includes/class-knokspack-ai.php path | Provider access and outbound endpoint policy not verified here |
