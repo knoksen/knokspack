@@ -85,3 +85,7 @@ This supersedes the earlier unverified administrator cookie/REST-nonce handshake
 Still unverified: other privileged feature paths, production-specific cache/TLS behavior, complete database export semantics across schemas/engines, encrypted/off-site storage, archive authentication/extraction/SQL preflight, and actual restore/rollback. Restore remains disabled; no merge, staging deployment or production action is performed.
 
 The authenticated test client's HTTP transport is now restricted to five literal loopback routes with redirects disabled. External absolute/protocol-relative targets are rejected before network calls. This resolves the new test-client URL warning through stricter isolation, not an analyzer exclusion. Results for subsequent revisions remain available on PR #53.
+
+## HTTPS authentication fixture
+
+Both WordPress jobs passed at `7cd93c1` in [run 40776465279](https://github.com/knoksen/knokspack/actions/runs/40776465279) with trusted local HTTPS, replacing plaintext test-client transports. A temporary certificate with loopback IP SAN is explicitly trusted; certificate verification is never disabled. A route-limited proxy forwards only to the fixed loopback PHP backend. Proxy trust configuration is confined to the disposable wp-config. Login tests additionally assert Secure and HttpOnly cookie attributes. Production hosting/TLS remains a separate environment-specific gate.

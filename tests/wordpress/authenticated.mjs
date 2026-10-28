@@ -15,6 +15,7 @@ const transports = new Map([
 
 class Session {
     cookies = new Map();
+    cookieAttributes = new Map();
 
     async request(path, { form, nonce } = {}) {
         const send = transports.get(path);
@@ -31,7 +32,9 @@ class Session {
         for (const cookie of response.headers.getSetCookie()) {
             const pair = cookie.split(';', 1)[0];
             const split = pair.indexOf('=');
-            this.cookies.set(pair.slice(0, split), pair.slice(split + 1));
+            const name = pair.slice(0, split);
+            this.cookies.set(name, pair.slice(split + 1));
+            this.cookieAttributes.set(name, new Set(cookie.split(';').slice(1).map((part) => part.trim().toLowerCase())));
         }
         return response;
     }
@@ -47,6 +50,10 @@ class Session {
             form: { log: user, pwd: password, testcookie: '1', redirect_to: origin + '/wp-admin/' },
         });
         assert.equal(response.status, 302, 'WordPress login must redirect after setting cookies');
+        const loginCookie = [...this.cookies.keys()].find((name) => name.startsWith('wordpress_logged_in_'));
+        assert.ok(loginCookie, 'WordPress must issue a logged-in cookie');
+        assert.ok(this.cookieAttributes.get(loginCookie).has('secure'), 'HTTPS login cookie must be Secure');
+        assert.ok(this.cookieAttributes.get(loginCookie).has('httponly'), 'Login cookie must be HttpOnly');
         return this.identity();
     }
 
