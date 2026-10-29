@@ -18,10 +18,6 @@ class Knokspack_Autoloader {
      * Class constructor
      */
     public function __construct() {
-        if (function_exists('__autoload')) {
-            spl_autoload_register('__autoload');
-        }
-
         spl_autoload_register(array($this, 'autoload'));
 
         $this->include_path = KNOKSPACK_INCLUDES_DIR;

@@ -1,0 +1,41 @@
+name: Ecosystem workflow
+on:
+  pull_request:
+    paths: ['integrations/jarlhalla-ecosystem/**', '.github/workflows/ecosystem-workflow.yml']
+  push:
+    branches: [main]
+    paths: ['integrations/jarlhalla-ecosystem/**', '.github/workflows/ecosystem-workflow.yml']
+permissions:
+  contents: read
+jobs:
+  workflow:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.0', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '${{ matrix.php }}'
+      - name: Syntax and behavioral checks
+        run: |
+          find integrations/jarlhalla-ecosystem -name '*.php' -print0 | xargs -0 -n1 php -l
+          php integrations/jarlhalla-ecosystem/tests/workflow.php
+  wordpress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Real WordPress integration checks
+        run: |
+          mkdir -p "$RUNNER_TEMP/eco-test-output"
+          npx --yes @wp-playground/cli@3.1.61 run-blueprint \
+            --blueprint integrations/jarlhalla-ecosystem/tests/blueprint.json \
+            --mount "$PWD/integrations/jarlhalla-ecosystem:/wordpress/wp-content/plugins/jarlhalla-ecosystem" \
+            --mount "$RUNNER_TEMP/eco-test-output:/test-output"
+          test -s "$RUNNER_TEMP/eco-test-output/results.txt"
+          cat "$RUNNER_TEMP/eco-test-output/results.txt"
+          grep -q '^PASS 19 WordPress integration checks' "$RUNNER_TEMP/eco-test-output/results.txt"

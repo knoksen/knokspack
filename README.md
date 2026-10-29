@@ -2,7 +2,7 @@
 
 The ultimate all-in-one toolkit to secure, optimize, and grow your WordPress website. A self-hosted alternative to Jetpack with no external service requirements.
 
-## 🚀 Version 2.0.0
+## 🚀 Version 3.0.0
 
 ### What's New
 
@@ -67,9 +67,9 @@ The ultimate all-in-one toolkit to secure, optimize, and grow your WordPress web
 ## 🔧 Requirements
 
 - WordPress 6.0 or greater
-- PHP 7.4 or greater
+- PHP 8.0 or greater
 - MySQL 5.7+ or MariaDB 10.2+
-- Node.js 16+ (for development)
+- Node.js 22 and Python 3.12 (development/packaging; PHP test tooling requires 8.4.1+)
 
 ## 💻 Development
 
@@ -133,3 +133,11 @@ Licensed under the [GPLv2](https://www.gnu.org/licenses/gpl-2.0.html) or later.
 ## 🌟 Credits
 
 Created by [Knoksen](https://knoksen.com). Special thanks to all contributors!
+
+## Reviewed source and release limits
+
+The repository root is the only plugin source. Run `npm run package` to build and validate `build/knokspack.zip`; do not distribute a historical nested `knokspack/` tree or old desktop artifacts. Packaging excludes development dependencies and does not deploy.
+
+Optional analytics defaults off and requires per-visitor opt-in even on existing enabled installations. Visitors can withdraw consent using the analytics preferences control. Restore is temporarily disabled and returns an explicit error before reading archives or executing SQL. Backup creation requires an operator-configured private directory outside the WordPress root; existing archives are not moved or removed by this change.
+
+Feature descriptions above are product goals, not module readiness guarantees. See [remediation evidence](docs/audit/REMEDIATION.md) and the [module matrix](docs/audit/MODULE_MATRIX.md) before release.

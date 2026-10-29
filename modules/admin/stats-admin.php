@@ -2,7 +2,6 @@
 if (!defined('ABSPATH')) exit;
 
 class Knokspack_Stats_Admin {
-    private $options;
 
     public function __construct() {
         add_action('admin_menu', array($this, 'add_admin_menu'));
@@ -73,11 +72,21 @@ class Knokspack_Stats_Admin {
     }
 
     public function render_section_info() {
-        echo '<p>' . __('Configure how Knokspack collects and manages analytics data.', 'knokspack') . '</p>';
+        echo '<p>' . __('Configure analytics collection. New installations default to off, and each visitor must opt in before any analytics data is collected. Existing analytics history is preserved.', 'knokspack') . '</p>';
+    }
+
+    private function get_stats_options() {
+        return wp_parse_args((array) get_option('knokspack_stats_settings', array()), array(
+            'enable_tracking' => false,
+            'track_visitors' => false,
+            'track_page_views' => false,
+            'track_events' => false,
+            'retention_days' => 90,
+        ));
     }
 
     public function render_enable_tracking_field() {
-        $options = get_option('knokspack_stats_settings');
+        $options = $this->get_stats_options();
         ?>
         <label>
             <input type='checkbox' name='knokspack_stats_settings[enable_tracking]'
@@ -88,18 +97,18 @@ class Knokspack_Stats_Admin {
     }
 
     public function render_track_visitors_field() {
-        $options = get_option('knokspack_stats_settings');
+        $options = $this->get_stats_options();
         ?>
         <label>
             <input type='checkbox' name='knokspack_stats_settings[track_visitors]'
                 <?php checked($options['track_visitors'], 1); ?> value='1'>
-            <?php _e('Track unique visitors using cookies', 'knokspack'); ?>
+            <?php _e('Count visitors with a daily rotating, cookie-less identifier', 'knokspack'); ?>
         </label>
         <?php
     }
 
     public function render_track_page_views_field() {
-        $options = get_option('knokspack_stats_settings');
+        $options = $this->get_stats_options();
         ?>
         <label>
             <input type='checkbox' name='knokspack_stats_settings[track_page_views]'
@@ -110,7 +119,7 @@ class Knokspack_Stats_Admin {
     }
 
     public function render_track_events_field() {
-        $options = get_option('knokspack_stats_settings');
+        $options = $this->get_stats_options();
         ?>
         <label>
             <input type='checkbox' name='knokspack_stats_settings[track_events]'
@@ -121,11 +130,11 @@ class Knokspack_Stats_Admin {
     }
 
     public function render_retention_days_field() {
-        $options = get_option('knokspack_stats_settings');
-        $retention_days = isset($options['retention_days']) ? absint($options['retention_days']) : 90;
+        $options = $this->get_stats_options();
+        $retention_days = absint($options['retention_days']);
         ?>
         <input type='number' name='knokspack_stats_settings[retention_days]'
-            value='<?php echo esc_attr($retention_days); ?>' min='1' max='365' step='1'>
+            value='<?php echo esc_attr(sprintf('%d', $retention_days)); ?>' min='1' max='365' step='1'>
         <p class="description">
             <?php _e('Number of days to keep detailed analytics data. Default is 90 days.', 'knokspack'); ?>
         </p>

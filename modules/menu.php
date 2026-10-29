@@ -100,80 +100,94 @@ class Knokspack_Menu {
         ));
     }
 
+    private function render_template($name) {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('You do not have permission to access this page.', 'knokspack'));
+        }
+        $path = KNOKSPACK_PATH . 'templates/' . $name . '.php';
+        if (is_file($path) && is_readable($path)) {
+            include $path;
+            return;
+        }
+        echo '<div class="wrap"><h1>' . esc_html__('Knokspack', 'knokspack') . '</h1><p>';
+        echo esc_html__('This module interface is not configured yet.', 'knokspack');
+        echo '</p></div>';
+    }
+
     public function render_dashboard() {
-        include KNOKSPACK_PATH . 'templates/dashboard.php';
+        $this->render_template('dashboard');
     }
 
     public function render_security() {
-        include KNOKSPACK_PATH . 'templates/security.php';
+        $this->render_template('security');
     }
 
     public function render_firewall() {
-        include KNOKSPACK_PATH . 'templates/firewall.php';
+        $this->render_template('firewall');
     }
 
     public function render_malware_scan() {
-        include KNOKSPACK_PATH . 'templates/malware-scan.php';
+        $this->render_template('malware-scan');
     }
 
     public function render_activity_log() {
-        include KNOKSPACK_PATH . 'templates/activity-log.php';
+        $this->render_template('activity-log');
     }
 
     public function render_performance() {
-        include KNOKSPACK_PATH . 'templates/performance.php';
+        $this->render_template('performance');
     }
 
     public function render_cdn() {
-        include KNOKSPACK_PATH . 'templates/cdn.php';
+        $this->render_template('cdn');
     }
 
     public function render_cache() {
-        include KNOKSPACK_PATH . 'templates/cache.php';
+        $this->render_template('cache');
     }
 
     public function render_backup() {
-        include KNOKSPACK_PATH . 'templates/backup.php';
+        $this->render_template('backup');
     }
 
     public function render_scheduled_backups() {
-        include KNOKSPACK_PATH . 'templates/scheduled-backups.php';
+        $this->render_template('scheduled-backups');
     }
 
     public function render_ai() {
-        include KNOKSPACK_PATH . 'templates/ai.php';
+        $this->render_template('ai');
     }
 
     public function render_growth() {
-        include KNOKSPACK_PATH . 'templates/growth.php';
+        $this->render_template('growth');
     }
 
     public function render_newsletter() {
-        include KNOKSPACK_PATH . 'templates/newsletter.php';
+        $this->render_template('newsletter');
     }
 
     public function render_social() {
-        include KNOKSPACK_PATH . 'templates/social.php';
+        $this->render_template('social');
     }
 
     public function render_promotion() {
-        include KNOKSPACK_PATH . 'templates/promotion.php';
+        $this->render_template('promotion');
     }
 
     public function render_crm() {
-        include KNOKSPACK_PATH . 'templates/crm.php';
+        $this->render_template('crm');
     }
 
     public function render_analytics() {
-        include KNOKSPACK_PATH . 'templates/analytics.php';
+        $this->render_template('analytics');
     }
 
     public function render_search() {
-        include KNOKSPACK_PATH . 'templates/search.php';
+        $this->render_template('search');
     }
 
     public function render_settings() {
-        include KNOKSPACK_PATH . 'templates/settings.php';
+        $this->render_template('settings');
     }
 }
 

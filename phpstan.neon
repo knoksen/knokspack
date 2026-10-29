@@ -4,6 +4,10 @@ includes:
 
 parameters:
   level: 5
+  bootstrapFiles:
+    - tools/phpstan/bootstrap.php
+  stubFiles:
+    - tools/phpstan/wordpress-block-compat.stub
   scanFiles:
     - wp-site-suite.php
   paths:

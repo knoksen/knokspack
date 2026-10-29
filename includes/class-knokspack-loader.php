@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
 class Knokspack_Loader {
     /**
      * Plugin instance
-     * @var Knokspack_Loader
+     * @var Knokspack_Loader|null
      */
     private static $instance = null;
 
