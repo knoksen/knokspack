@@ -152,7 +152,10 @@ class Knokspack_Marketing {
         // Twitter posting
         $twitter_keys = get_option('knokspack_twitter_keys');
         if ($twitter_keys) {
-            $this->post_to_twitter($title, $url, $twitter_keys);
+            $result = $this->post_to_twitter($title, $url, $twitter_keys);
+            if (is_wp_error($result)) {
+                do_action('knokspack_social_post_failed', 'twitter', $post_id, $result);
+            }
         }
 
         // LinkedIn posting
@@ -176,8 +179,8 @@ class Knokspack_Marketing {
     }
 
     private function post_to_twitter($title, $url, $keys) {
-        // Twitter posting implementation
-        // Note: Twitter API v2 required
+        // No adapter is implemented: report this explicitly without sending keys.
+        return new WP_Error('knokspack_twitter_unconfigured', 'Twitter publishing is not implemented.');
     }
 
     private function post_to_linkedin($title, $url, $excerpt, $token) {

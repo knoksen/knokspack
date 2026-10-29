@@ -1,8 +1,15 @@
 includes:
   - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+  - vendor/szepeviktor/phpstan-wordpress/extension.neon
 
 parameters:
   level: 5
+  bootstrapFiles:
+    - tools/phpstan/bootstrap.php
+  stubFiles:
+    - tools/phpstan/wordpress-block-compat.stub
+  scanFiles:
+    - wp-site-suite.php
   paths:
     - modules
     - includes

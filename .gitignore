@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 build
+
+# Local validation and package outputs
+vendor/
+build/
+__pycache__/
+.phpunit.cache/

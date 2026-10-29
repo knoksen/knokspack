@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
  * Main Knokspack Class.
  */
 final class Knokspack {
-    /** @var Knokspack single instance */
+    /** @var Knokspack|null single instance */
     private static $instance = null;
 
     /**
@@ -66,24 +66,6 @@ final class Knokspack {
     private function define($name, $value) {
         if (!defined($name)) {
             define($name, $value);
-        }
-    }
-
-    /**
-     * What type of request is this?
-     * @param string $type
-     * @return bool
-     */
-    private function is_request($type) {
-        switch ($type) {
-            case 'admin':
-                return is_admin();
-            case 'ajax':
-                return defined('DOING_AJAX');
-            case 'cron':
-                return defined('DOING_CRON');
-            case 'frontend':
-                return (!is_admin() || defined('DOING_AJAX')) && !defined('DOING_CRON');
         }
     }
 
@@ -223,10 +205,10 @@ final class Knokspack {
                 'include_database' => true
             ),
             'stats' => array(
-                'enable_tracking' => true,
-                'track_visitors' => true,
-                'track_page_views' => true,
-                'track_events' => true,
+                'enable_tracking' => false,
+                'track_visitors' => false,
+                'track_page_views' => false,
+                'track_events' => false,
                 'retention_days' => 90
             )
         );

@@ -1,0 +1,11 @@
+<?php
+/**
+ * WordPress accepts arbitrary public block properties, including legacy handles.
+ * The generated upstream sealed shape omits those still-supported properties.
+ * @see https://developer.wordpress.org/reference/classes/wp_block_type/__construct/
+ * @param string|WP_Block_Type $block_type
+ * @param array{attributes?: array<string, mixed>, render_callback?: callable|null, editor_script?: string, editor_style?: string, style?: string, ...<string, mixed>} $args
+ * @return WP_Block_Type|false
+ */
+function register_block_type($block_type, $args = []) {}
+class WP_Block_Type {}

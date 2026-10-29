@@ -2,8 +2,6 @@
 if (!defined('ABSPATH')) exit;
 
 class Knokspack_CRM_Contacts_Table extends WP_List_Table {
-    private $table_data;
-
     public function __construct() {
         parent::__construct(array(
             'singular' => 'contact',
@@ -26,36 +24,41 @@ class Knokspack_CRM_Contacts_Table extends WP_List_Table {
         $current_page = $this->get_pagenum();
         $offset = ($current_page - 1) * $per_page;
 
-        $search = isset($_REQUEST['s']) ? sanitize_text_field($_REQUEST['s']) : '';
+        $search = isset($_REQUEST['s']) && is_string($_REQUEST['s'])
+            ? sanitize_text_field(wp_unslash($_REQUEST['s'])) : '';
         
         $where = '';
         if (!empty($search)) {
             $where = $wpdb->prepare(
                 " WHERE name LIKE %s OR email LIKE %s OR company LIKE %s",
-                '%' . $search . '%',
-                '%' . $search . '%',
-                '%' . $search . '%'
+                '%' . $wpdb->esc_like($search) . '%',
+                '%' . $wpdb->esc_like($search) . '%',
+                '%' . $wpdb->esc_like($search) . '%'
             );
         }
 
-        $orderby = isset($_REQUEST['orderby']) ? sanitize_text_field($_REQUEST['orderby']) : 'created_at';
-        $order = isset($_REQUEST['order']) ? sanitize_text_field($_REQUEST['order']) : 'DESC';
+        // SQL identifiers and direction cannot be escaped as text: allowlist them.
+        $requested_orderby = $_REQUEST['orderby'] ?? 'created_at';
+        $orderby = is_string($requested_orderby) && isset($sortable[$requested_orderby])
+            ? $requested_orderby : 'created_at';
+        $requested_order = $_REQUEST['order'] ?? 'DESC';
+        $order = is_string($requested_order) && strtoupper($requested_order) === 'ASC'
+            ? 'ASC' : 'DESC';
         
-        $total_items = $wpdb->get_var("SELECT COUNT(*) FROM $table_name $where");
+        $total_items = max(0, (int) $wpdb->get_var("SELECT COUNT(*) FROM $table_name $where"));
         
-        $this->table_data = $wpdb->get_results(
+        $this->items = $wpdb->get_results(
             $wpdb->prepare(
                 "SELECT * FROM $table_name $where ORDER BY $orderby $order LIMIT %d OFFSET %d",
                 $per_page,
                 $offset
             ),
             ARRAY_A
-        );
+        ) ?: array();
 
         $this->set_pagination_args(array(
             'total_items' => $total_items,
-            'per_page' => $per_page,
-            'total_pages' => ceil($total_items / $per_page)
+            'per_page' => $per_page
         ));
     }
 
