@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-10-28",
+  "initiatives": [
+    {"id":"taksdal-bt","name":"Taksdal Bygg Teknisk","area":"building","description":"Byggesøknader, tegninger og byggteknisk rådgivning.","url":"https://tbt.jarlhalla.com/","availability":"existing-link","source":"https://jarlhalla.com/ecosystem/"},
+    {"id":"sustainarc","name":"SustainArc","area":"sustainability","description":"Arkitektur, sirkulært bygg og livsløpstenkning.","url":"https://sustainarc.jarlhalla.com/","availability":"existing-link","source":"https://jarlhalla.com/ecosystem/"},
+    {"id":"mykoknoks","name":"MykoKnoks","area":"research","description":"Naturdata og etterprøvbar forskning. Jæren-pilot under utvikling.","url":"https://mykoknoks.jarlhalla.com/","availability":"existing-link","source":"https://jarlhalla.com/ecosystem/"},
+    {"id":"samfunnsbro","name":"SamfunnsBro","area":"community","description":"Mentorskap, arbeid og kunnskapsdeling.","url":"https://jarlhalla.com/samfunnsbro/","availability":"existing-link","source":"https://jarlhalla.com/ecosystem/"},
+    {"id":"membership","name":"Medlemskap og læring","area":"learning","description":"Gratis medlemskap, kurs og fellesskap. Betalte kursnivåer er planlagt.","url":"https://jarlhalla.com/membership-pricing/","availability":"existing-link","source":"https://jarlhalla.com/ecosystem/"},
+    {"id":"archeng-nexus","name":"ArchEng Nexus","area":"building","description":"Prosjekterings- og BIM-verktøy knyttet til Taksdal BT.","url":null,"availability":"preparation","source":"https://github.com/knoksen/archeng-nexus"},
+    {"id":"terratek","name":"Terratek","area":"sustainability","description":"Konseptspor for bærekraftige bygg. Leveranseomfang avklares.","url":null,"availability":"preparation","source":"historical-initiative-map"},
+    {"id":"njord","name":"Njord Construction","area":"building","description":"Byggfaglig initiativ. Leveranseomfang avklares.","url":null,"availability":"preparation","source":"historical-initiative-map"},
+    {"id":"jarlhalla-ai","name":"Jarlhalla AI og Knokspack","area":"ai","description":"AI-støtte og digitale arbeidsverktøy. Produksjonskoblinger må verifiseres.","url":null,"availability":"preparation","source":"integration-registry"},
+    {"id":"jhlgi","name":"Jarlhalla Data Intelligence","area":"ai","description":"Privat analyseplattform. Tilgang og datagrunnlag avklares før bruk.","url":null,"availability":"private","source":"integration-registry"},
+    {"id":"arc","name":"JarlhallaARC","area":"sustainability","description":"Visuell arkitektur og design knyttet til SustainArc.","url":null,"availability":"preparation","source":"integration-registry"},
+    {"id":"nexium-art","name":"Nexium Art / Knoksen Art / Draug Designs","area":"creative","description":"Kunst, visuell historiefortelling og kreative leveranser.","url":null,"availability":"preparation","source":"historical-initiative-map"},
+    {"id":"nature-intelligence","name":"Nature Intelligence / BioBuild / Research Compass","area":"research","description":"Natur, materialer og kildebasert kunnskapsutvikling.","url":null,"availability":"preparation","source":"portfolio-index"},
+    {"id":"digital-being","name":"RoomZero / Digital Being / Eir","area":"labs","description":"Forsknings- og utviklingsspor for digitale vesener og interaksjon.","url":null,"availability":"preparation","source":"historical-initiative-map"},
+    {"id":"jhlgame","name":"JHLgame","area":"labs","description":"Interaktive, kreative opplevelser og simulering.","url":null,"availability":"preparation","source":"integration-registry"},
+    {"id":"publishing","name":"Artikler og kunnskapsdeling","area":"publishing","description":"Fagartikler, forskning og redaksjonelt innhold.","url":"https://jarlhalla.com/blog/","availability":"existing-link","source":"wordpress-page-list"}
+  ]
+}
