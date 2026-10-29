@@ -73,6 +73,13 @@ jobs:
             find modules includes -name '*.php' -print0 | xargs -0 -n1 -P4 php -l
           fi
 
+      - name: Run PHPStan (if installed)
+        run: |
+          if [ -f vendor/bin/phpstan ]; then
+            vendor/bin/phpstan analyse modules includes --no-progress --memory-limit=2G
+          else
+            echo 'phpstan not installed; skipping'
+          fi
       - name: Run isolated PHP regressions
         run: php tests/php/release_regressions.php
 
