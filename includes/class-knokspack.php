@@ -205,10 +205,10 @@ final class Knokspack {
                 'include_database' => true
             ),
             'stats' => array(
-                'enable_tracking' => true,
-                'track_visitors' => true,
-                'track_page_views' => true,
-                'track_events' => true,
+                'enable_tracking' => false,
+                'track_visitors' => false,
+                'track_page_views' => false,
+                'track_events' => false,
                 'retention_days' => 90
             )
         );
