@@ -71,8 +71,9 @@ class Knokspack_Backup {
         $private_root = (defined('KNOKSPACK_PRIVATE_BACKUP_DIR') === true) ? realpath(KNOKSPACK_PRIVATE_BACKUP_DIR) : false;
         $site_root = realpath(ABSPATH);
         $configured = is_string($this->options['backup_path']) === true ? realpath($this->options['backup_path']) : false;
-        if ($private_root === false || $site_root === false || $configured !== $private_root || ($this->is_within($private_root, $site_root) === true)) {
-            return new WP_Error('private_backup_required', 'Configure an existing private backup directory outside the web root before creating backups.');
+        if ($private_root === false || $site_root === false || $configured !== $private_root
+            || $this->is_within($private_root, $site_root) === true || $this->is_within($site_root, $private_root) === true) {
+            return new WP_Error('private_backup_required', 'Configure an existing private backup directory separate from the WordPress tree before creating backups.');
         }
         if ((class_exists('ZipArchive') === false)) {
             return new WP_Error('zip_required', 'The PHP zip extension is required.');

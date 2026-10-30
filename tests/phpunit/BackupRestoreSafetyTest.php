@@ -29,6 +29,27 @@ class BackupRestoreSafetyTest extends TestCase {
         self::assertCount(0, $GLOBALS['wpdb']->inserts);
     }
 
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    public function test_creation_rejects_storage_containing_wordpress_before_any_write(): void {
+        $root = dirname(realpath(ABSPATH));
+        define('KNOKSPACK_PRIVATE_BACKUP_DIR', $root);
+        $before = scandir($root);
+        $result = (new Knokspack_Backup())->create_backup('database');
+        self::assertInstanceOf(WP_Error::class, $result);
+        self::assertSame('private_backup_required', $result->get_error_code());
+        self::assertCount(0, $GLOBALS['wpdb']->inserts);
+        self::assertCount(0, $GLOBALS['wpdb']->updates);
+        self::assertSame($before, scandir($root));
+    }
+
+    #[\PHPUnit\Framework\Attributes\RunInSeparateProcess]
+    public function test_creation_rejects_wordpress_root_as_backup_storage(): void {
+        define('KNOKSPACK_PRIVATE_BACKUP_DIR', realpath(ABSPATH));
+        $result = (new Knokspack_Backup())->create_backup('files');
+        self::assertSame('private_backup_required', $result->get_error_code());
+        self::assertCount(0, $GLOBALS['wpdb']->inserts);
+    }
+
     public function test_untrusted_archive_cannot_be_deleted(): void {
         $fixture = tempnam(sys_get_temp_dir(), 'knokspack-test-');
         try {
