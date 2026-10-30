@@ -13,7 +13,7 @@ The expected digest must not be supplied by the inspected archive or recomputed 
 - File must resolve inside a configured private root disjoint from the WordPress tree. Stream wrappers, outside paths, final symlinks, non-ZIP files and roots containing/inside WordPress are rejected.
 - Digest format/match and ZIP consistency are required before entry inspection. Inspection opens read-only and checks the digest again afterward; this remains point-in-time evidence, not a race-free authorization for later extraction.
 - Entry names must use one expected archive root and conservative portable ASCII paths. Reject traversal, absolute/drive/ADS paths, backslashes, control/non-ASCII characters, encoded traversal/separators, Windows reserved names, illegal Windows characters, trailing dots/spaces, repeated separators, case-folded duplicate names and file/directory conflicts. Legitimate non-ASCII filenames are intentionally unsupported in this initial gate; input names are never silently normalized.
-- Reject Unix links/special files, unsupported compression and encrypted entries. Only regular files/directories using STORE or DEFLATE are accepted. Encryption support requires a separate authenticated key-management design.
+- Reject link/special-file mode bits regardless of the claimed creator OS, DOS reparse metadata, unsupported compression and encrypted entries. Only regular files/directories using STORE or DEFLATE are accepted. Encryption support requires a separate authenticated key-management design.
 - Require a bounded JSON manifest, positive integer backup ID matching the archive root, known backup type and matching database.sql/files payload layout. SQL payload bytes are never interpreted or executed.
 - Conservative limits: 256 MiB archive, 10,000 entries, 128 MiB per entry, 512 MiB declared total, compression ratio 200 and 64 KiB manifest. Optional constructor limits may only tighten these values. These defaults are not a statement that every legitimate site backup will fit.
 
@@ -21,7 +21,7 @@ Backup ZIP creation now normalizes the platform directory separator to '/' for n
 
 ## Evidence and test scope
 
-Local Windows PHP 8.4.27 with zip/mbstring: 47 PHPUnit tests / 221 assertions pass (18 prior cases plus 29 new preflight cases), PHPStan level 5 has zero errors, and targeted Squiz comparison checks pass. Thirty Jest tests, the Vite build/package and three package/module contracts pass. Dependencies were installed from unchanged lockfiles; no dependency versions changed.
+Local Windows PHP 8.4.27 with zip/mbstring: 48 PHPUnit tests / 230 assertions pass (18 prior cases plus 30 new preflight cases), PHPStan level 5 has zero errors, and targeted Squiz comparison checks pass. Thirty Jest tests, the Vite build/package and three package/module contracts pass. Dependencies were installed from unchanged lockfiles; no dependency versions changed.
 
 New fixtures cover valid database/files/full layouts, unchanged input hashes and no DB writes; traversal/absolute/encoded/backslash/Windows-invalid paths; case and file/directory conflicts; Unix link/special-file attributes; required/stale digest; private-root containment; resource budgets/compression; malformed manifests/layout/ZIP; encrypted members; non-relaxable limits; and a nested archive from the current creator. Windows symlink cases execute only when the OS allows creating a link; Linux CI exercises them normally.
 
@@ -32,3 +32,7 @@ The isolated WordPress matrix additionally inspects the archive that the package
 Authenticated, immutable archive provenance/digest storage and key lifecycle; full payload/CRC and target-containment checks using the same immutable bytes; database/table scope and SQL preflight; storage permissions, encryption and quotas; isolated restore and rollback rehearsal; independent review and explicit environment/revision approval. A preflight result is never a release or restore permission. No production access, merge, deployment or restore is performed in this change.
 
 API references: [entry metadata](https://www.php.net/manual/en/ziparchive.statindex.php), [external file attributes](https://www.php.net/manual/en/ziparchive.getexternalattributesindex.php), [bounded manifest reads](https://www.php.net/manual/en/ziparchive.getfromname.php).
+
+## Initial CI observation
+
+At initial revision `00c00cd`, [WordPress integration run 41108136798](https://github.com/knoksen/knokspack/actions/runs/41108136798) passed both WordPress 6.0/PHP 8.0 and WordPress 7.1.4/PHP 8.4, including read-only inspection of the packaged plugin's freshly exported SQL archive. Standard CI, Node builds and CodeQL also passed. Later hardening additionally rejects spoofed creator-OS link metadata and DOS reparse flags; final results are recorded on the PR's exact revision. No restore ran.

@@ -95,10 +95,12 @@ final class Knokspack_Backup_Archive {
         $attributes = 0;
         if ($zip->getExternalAttributesIndex($index, $system, $attributes) === false) return false;
         $type = ($attributes >> 16) & 0170000;
-        if ($system === ZipArchive::OPSYS_UNIX && $type !== 0) {
+        // Creator-OS labels are untrusted; reject link/special modes on every platform.
+        if (($attributes & 0x400) !== 0) return false;
+        if ($type !== 0) {
             return $directory === true ? $type === 0040000 : $type === 0100000;
         }
-        return ($attributes & 0x400) === 0;
+        return true;
     }
 
     private function scan(ZipArchive $zip, $root) {

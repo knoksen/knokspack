@@ -84,14 +84,23 @@ class BackupArchivePreflightTest extends TestCase {
     }
 
     public function test_unix_links_and_special_files_are_rejected(): void {
-        foreach (array(0120777, 0010644) as $mode) {
+        foreach (array(array(3, 0120777), array(3, 0010644), array(19, 0120777), array(0, 0120777)) as [$system, $mode]) {
             $path = $this->archive(array('files/link' => 'outside'));
             $zip = new ZipArchive();
             $zip->open($path);
-            $zip->setExternalAttributesName(basename($path, '.zip') . '/files/link', ZipArchive::OPSYS_UNIX, $mode << 16);
+            $zip->setExternalAttributesName(basename($path, '.zip') . '/files/link', $system, $mode << 16);
             $zip->close();
             self::assertSame('archive_entry_conflict', $this->inspect($path)->get_error_code());
         }
+    }
+
+    public function test_dos_reparse_metadata_is_rejected(): void {
+        $path = $this->archive(array('files/link' => 'outside'));
+        $zip = new ZipArchive();
+        $zip->open($path);
+        $zip->setExternalAttributesName(basename($path, '.zip') . '/files/link', ZipArchive::OPSYS_DOS, 0x400);
+        $zip->close();
+        self::assertSame('archive_entry_conflict', $this->inspect($path)->get_error_code());
     }
 
     public function test_digest_is_required_and_tampering_is_rejected(): void {
