@@ -193,17 +193,18 @@ class Knokspack_Backup {
                 $selections = array();
                 foreach ($columns as $column) {
                     // DEFAULT_GENERATED is writable; virtual/stored expressions are not.
-                    if (preg_match('/\\b(?:VIRTUAL|STORED|PERSISTENT)(?:\\s+GENERATED)?\\b/i', $column['Extra']) === 1) continue;
+                    if (preg_match('/\b(?:VIRTUAL|STORED|PERSISTENT)(?:\s+GENERATED)?\b/i', $column['Extra']) === 1) continue;
                     $identifier = $this->quote_backup_identifier($column['Field']);
                     $names[] = $identifier;
-                    $kind = preg_match('/\\Abit\\b/i', $column['Type']) === 1 ? 'bit' :
-                        (preg_match('/\\A(?:binary|varbinary|tinyblob|blob|mediumblob|longblob)\\b/i', $column['Type']) === 1 ? 'binary' : 'text');
+                    $kind = preg_match('/\Abit\b/i', $column['Type']) === 1 ? 'bit' :
+                        (preg_match('/\A(?:binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/i', $column['Type']) === 1 ? 'binary' : 'text');
                     $writable[$column['Field']] = $kind;
                     // Read bytes through HEX so driver-specific BIT conversion cannot lose information.
                     $selections[] = $kind === 'text' ? $identifier : "HEX($identifier) AS $identifier";
                 }
                 $list = implode(', ', $names);
-                $selection = $selections === array() ? '*' : implode(', ', $selections);
+                $selection = implode(', ', $selections);
+                if ($selection === '') $selection = '*';
                 $this->write_backup_sql($handle, "\n\nDROP TABLE IF EXISTS $quoted;\n" . $create[1] . ";\n\n");
                 $offset = 0;
                 do {
@@ -225,7 +226,11 @@ class Knokspack_Backup {
         }
     }
 
-    private function backup_query_failed() {
+    /**
+     * Reads mutable connection state; must not be memoized between SQL queries.
+     * @phpstan-impure
+     */
+    private function backup_query_failed(): bool {
         global $wpdb;
         return $wpdb->last_error !== '';
     }
@@ -234,7 +239,7 @@ class Knokspack_Backup {
         global $wpdb;
         if ($value === null) return 'NULL';
         if ($kind === 'text') return "'" . $wpdb->_real_escape($value) . "'";
-        if (is_string($value) === false || preg_match('/\\A[0-9a-f]*\\z/i', $value) !== 1) {
+        if (is_string($value) === false || preg_match('/\A[0-9a-f]*\z/i', $value) !== 1) {
             throw new Exception('Invalid binary export representation');
         }
         if ($kind === 'binary') return "X'" . $value . "'";
