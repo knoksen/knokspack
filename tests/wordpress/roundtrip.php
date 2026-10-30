@@ -44,7 +44,7 @@ for ($index = 1; $index <= 503; $index++) {
          VALUES (%d, %s, UNHEX(%s), $nullable, %s, b'101010101', %s)",
         $index, $text, '0001275c0a0d1aff80c3a9', '-123456789012345678.123456789012', '2026-01-02 03:04:05.123456'
     ));
-    knokspack_roundtrip_check($inserted === 1, 'synthetic fixture row inserted');
+    if ($inserted !== 1) throw new RuntimeException('Could not insert synthetic fixture row');
 }
 $query = "SELECT id, text_value, HEX(blob_value) AS blob_hex, nullable_value, exact_decimal, HEX(bit_value) AS bit_hex, recorded_at, derived_value FROM $quoted ORDER BY id";
 $expected = $wpdb->get_results($query, ARRAY_A);
