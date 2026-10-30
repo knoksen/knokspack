@@ -14,7 +14,7 @@ The database error-state helper is marked phpstan-impure because it observes mut
 
 A second digest-pinned MariaDB service uses a separate loopback port, database and restricted user. The test refuses a nonempty import target. It accepts no external site path, server, database name or SQL upload. The source is the archive that this test just generated from its own synthetic WordPress database. SQL is read from that known member without extracting arbitrary archive paths, under an 8 MiB fixture bound. No production secrets are used.
 
-The source fixture has 503 rows, crossing the 500-row export page boundary, with quotes, backslashes, semicolons, line breaks, NUL, Unicode, NULL/empty values, BLOB bytes, BIT(9), DECIMAL(30,12), microsecond timestamps and a stored generated column. The test compares all row values exactly after importing on the scratch server, mutates only the scratch table, replays the same dump and checks equality again. The original WordPress rows and sentinel option must remain unchanged. This is an SQL export/replay rehearsal, not plugin restore or atomic site rollback.
+The source fixture has 503 rows, crossing the 500-row export page boundary, with quotes, backslashes, semicolons, line breaks, NUL, Unicode, NULL/empty values, BLOB bytes, BIT(9)/BIT(64), NULL/empty binary values, a quoted identifier, DECIMAL(30,12), microsecond timestamps and stored and virtual generated columns. The test compares all row values exactly after importing on the scratch server, mutates only the scratch table, replays the same dump and checks equality again. The original WordPress rows and sentinel option must remain unchanged. This is an SQL export/replay rehearsal, not plugin restore or atomic site rollback.
 
 Local Windows checks: 49 PHPUnit tests / 245 assertions pass; targeted Squiz comparison checks pass; PHPStan level 5 has zero errors. The added fault-injection case covers unsupported definitions, failed column reads and a failure after the first 500 rows: each returns a failed backup, creates no completed ZIP and redacts raw database details. Full integration results must be checked on the corrective PR revision, not inferred from local mocks.
 
@@ -27,3 +27,9 @@ This matrix uses MariaDB 11.4 on both sides; it does not prove MySQL compatibili
 Authenticated immutable archive provenance, bounded SQL preflight, file-target validation, encryption/off-site retention and full restore/rollback approval remain required before enabling any production restore.
 
 References: [MariaDB BIT](https://mariadb.com/docs/server/reference/data-types/numeric-data-types/bit), [column metadata](https://mariadb.com/docs/server/reference/sql-statements/administrative-sql-statements/show/show-columns), [generated columns](https://mariadb.com/docs/server/reference/sql-statements/data-definition/create/generated-columns).
+
+## Verified corrective execution
+
+The initial corrective revision d9b604b passed both WordPress matrix jobs in [run 41114531972](https://github.com/knoksen/knokspack/actions/runs/41114531972), including exact 503-row reconstruction, replay after a synthetic mutation and unchanged source data. Subsequent test extensions add BIT(64), NULL/empty binary fields, a backtick-containing column name and a virtual generated column; final results are revision-specific on the corrective PR.
+
+Binary hex representation increases SQL size compared with raw bytes. Large BLOB memory/storage pressure and consistency during concurrent writes remain unverified; this fixture is small and single-writer. No production restore capability is enabled by the roundtrip result.
