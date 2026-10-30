@@ -25,9 +25,14 @@ const panels=['command','chat','knokspackPanel','taskPanel','integrations'];
 const labels={command:'Oversikt',chat:'Jarlhalla AI',knokspackPanel:'Knokspack',taskPanel:'Oppgaver',integrations:'Integrasjoner'};
 function navigate(id){if(!panels.includes(id))id='command';for(const panel of panels)$(panel).hidden=panel!==id;document.querySelectorAll('[data-tab]').forEach(b=>{if(b.dataset.tab===id)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});$('viewTitle').textContent=labels[id];if(id==='knokspackPanel'&&!$('knokspackFrame').hasAttribute('src'))$('knokspackFrame').src=$('knokspackFrame').dataset.src;if(location.hash!=='#'+id)location.hash=id;}
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>navigate(b.dataset.tab));
-window.addEventListener('hashchange',()=>navigate(location.hash.slice(1)));
+const ALLOWED_TABS=new Set(['command','chat','knokspackPanel','taskPanel','integrations']);
+function getSafeTabFromHash(hashValue){
+  const tab=(hashValue||'').replace(/^#/,'');
+  return ALLOWED_TABS.has(tab)?tab:'command';
+}
+window.addEventListener('hashchange',()=>navigate(getSafeTabFromHash(location.hash)));
 $('reloadKnokspack').onclick=()=>{$('knokspackFrame').src=$('knokspackFrame').dataset.src;};
-navigate(location.hash.slice(1));
+navigate(getSafeTabFromHash(location.hash));
 $('commandCheck').onclick=check;
 let tasks=[];try{const saved=JSON.parse(localStorage.getItem('jarlhalla.tasks')||'[]');if(Array.isArray(saved))tasks=saved.filter(t=>t&&typeof t.text==='string'&&typeof t.done==='boolean').slice(0,200);}catch{}
 const pendingTasks=new Set();
