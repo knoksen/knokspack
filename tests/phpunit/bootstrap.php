@@ -264,3 +264,9 @@ if (function_exists('wp_get_theme') === false) {
 if (function_exists('absint') === false) {
     function absint($value) { return abs((int) $value); }
 }
+
+require_once ABSPATH . 'includes/class-knokspack-backup-archive.php';
+
+if (function_exists('is_wp_error') === false) {
+    function is_wp_error($value) { return $value instanceof WP_Error; }
+}

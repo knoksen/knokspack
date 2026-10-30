@@ -220,7 +220,7 @@ class Knokspack_Backup {
             $path = realpath($file->getPathname());
             if ($path === false || ($this->is_within($path, $root_dir) === false)) throw new Exception('Backup source escaped WordPress root');
             if (($this->is_within($path, $this->options['backup_path']) === true)) continue;
-            $relative_path = str_replace('\\', '/', substr($path, strlen(rtrim($root_dir, '/\\')) + 1));
+            $relative_path = str_replace(DIRECTORY_SEPARATOR, '/', substr($path, strlen(rtrim($root_dir, '/\\')) + 1));
 
             // Skip excluded paths
             foreach ($this->options['exclude_paths'] as $exclude) {
@@ -245,7 +245,7 @@ class Knokspack_Backup {
         foreach ($iterator as $file) {
             if (($file->isDir() === true)) continue;
 
-            $local_path = $base_path . '/' . substr($file->getPathname(), strlen($path) + 1);
+            $local_path = $base_path . '/' . str_replace(DIRECTORY_SEPARATOR, '/', substr($file->getPathname(), strlen($path) + 1));
             if (($zip->addFile($file->getPathname(), $local_path) === false)) throw new Exception('Failed to add backup file to archive');
         }
     }
