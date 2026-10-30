@@ -49,6 +49,7 @@ wp core install --url=https://127.0.0.1:8092 --title=Knokspack-integration   --a
 unzip -q "$REPO/build/knokspack.zip" -d "$SANDBOX/site/wp-content/plugins"
 wp plugin activate knokspack
 wp eval-file "$REPO/tests/wordpress/assertions.php"
+wp eval-file "$REPO/tests/wordpress/roundtrip.php"
 mkdir -p "$SANDBOX/site/wp-content/mu-plugins"
 cp "$REPO/tests/wordpress/session-fixture.php" "$SANDBOX/site/wp-content/mu-plugins/knokspack-integration.php"
 wp user update integration_subscriber --user_pass="$TEST_SUBSCRIBER_PASSWORD"

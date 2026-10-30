@@ -54,6 +54,11 @@ knokspack_integration_check(is_string($sql) === true && strpos($sql, 'knokspack_
 $manifest = json_decode($archive->getFromName($folder . '/manifest.json'), true);
 knokspack_integration_check($manifest['id'] === $id && $manifest['type'] === 'database', 'manifest agrees with database record');
 $archive->close();
+$preflight = new Knokspack_Backup_Archive(KNOKSPACK_PRIVATE_BACKUP_DIR);
+// Synthetic fixture digest is trusted here because this test created the archive itself.
+$inspection = $preflight->inspect($record->file_path, hash_file('sha256', $record->file_path));
+knokspack_integration_check(is_array($inspection) === true && $inspection['backup_id'] === $id && $inspection['restore_enabled'] === false, 'read-only preflight accepts generated archive without enabling restore');
+knokspack_integration_check(get_option('knokspack_integration_marker') === 'synthetic-only', 'archive inspection preserves database fixture');
 knokspack_integration_check($wpdb->last_error === '', 'no database error after export');
 
 update_option('knokspack_stats_settings', array('enable_tracking' => true, 'track_page_views' => true, 'track_visitors' => true, 'track_events' => true));

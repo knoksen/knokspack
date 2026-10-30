@@ -32,6 +32,18 @@ jobs:
         options: >-
           --health-cmd="healthcheck.sh --connect --innodb_initialized"
           --health-interval=5s --health-timeout=5s --health-retries=15
+      roundtrip:
+        image: mariadb:11.4@sha256:d9fc02976678d4236145299c40dc267051681b33489c994f0ec4a097ce4a9521
+        env:
+          MARIADB_DATABASE: knokspack_roundtrip
+          MARIADB_USER: knokspack_roundtrip
+          MARIADB_PASSWORD: ${{ github.run_id }}-roundtrip-${{ github.run_attempt }}
+          MARIADB_ROOT_PASSWORD: ${{ github.run_id }}-roundtrip-root-${{ github.run_attempt }}
+        ports:
+          - 127.0.0.1:3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=15
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -51,4 +63,5 @@ jobs:
           KNOKSPACK_INTEGRATION_TEST: '1'
           TEST_WORDPRESS_VERSION: ${{ matrix.wordpress }}
           TEST_DB_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}
+          TEST_ROUNDTRIP_PASSWORD: ${{ github.run_id }}-roundtrip-${{ github.run_attempt }}
         run: bash tests/wordpress/run.sh
