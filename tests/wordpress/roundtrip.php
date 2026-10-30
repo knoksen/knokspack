@@ -32,21 +32,26 @@ $wpdb->query("CREATE TABLE $quoted (
     nullable_value varchar(64) NULL,
     exact_decimal decimal(30,12) NOT NULL,
     bit_value bit(9) NOT NULL,
+    bit_wide bit(64) NOT NULL,
+    binary_nullable varbinary(8) NULL,
+    binary_empty varbinary(8) NOT NULL,
+    `tick``value` varchar(32) NOT NULL,
     recorded_at datetime(6) NOT NULL,
-    derived_value bigint GENERATED ALWAYS AS (id + 7) STORED
+    derived_value bigint GENERATED ALWAYS AS (id + 7) STORED,
+    virtual_value bigint GENERATED ALWAYS AS (id * 2) VIRTUAL
 ) ENGINE=InnoDB");
 knokspack_roundtrip_check($wpdb->last_error === '', 'roundtrip fixture schema created');
 for ($index = 1; $index <= 503; $index++) {
     $text = "fixture $index: quote ' slash \\ semicolon; newline\nCR\rNUL\0 UTF-8 \u{1F331}";
     $nullable = $index % 2 === 0 ? 'NULL' : "''";
     $inserted = $wpdb->query($wpdb->prepare(
-        "INSERT INTO $quoted (id, text_value, blob_value, nullable_value, exact_decimal, bit_value, recorded_at)
-         VALUES (%d, %s, UNHEX(%s), $nullable, %s, b'101010101', %s)",
+        "INSERT INTO $quoted (id, text_value, blob_value, nullable_value, exact_decimal, bit_value, bit_wide, binary_nullable, binary_empty, `tick``value`, recorded_at)
+         VALUES (%d, %s, UNHEX(%s), $nullable, %s, b'101010101', b'1111111111111111111111111111111111111111111111111111111111111111', NULL, UNHEX(''), 'identifier fixture', %s)",
         $index, $text, '0001275c0a0d1aff80c3a9', '-123456789012345678.123456789012', '2026-01-02 03:04:05.123456'
     ));
-    knokspack_roundtrip_check($inserted === 1, 'synthetic fixture row inserted');
+    if ($inserted !== 1) throw new RuntimeException('Could not insert synthetic fixture row');
 }
-$query = "SELECT id, text_value, HEX(blob_value) AS blob_hex, nullable_value, exact_decimal, HEX(bit_value) AS bit_hex, recorded_at, derived_value FROM $quoted ORDER BY id";
+$query = "SELECT id, text_value, HEX(blob_value) AS blob_hex, nullable_value, exact_decimal, HEX(bit_value) AS bit_hex, HEX(bit_wide) AS bit_wide_hex, HEX(binary_nullable) AS binary_nullable_hex, HEX(binary_empty) AS binary_empty_hex, `tick``value`, recorded_at, derived_value, virtual_value FROM $quoted ORDER BY id";
 $expected = $wpdb->get_results($query, ARRAY_A);
 knokspack_roundtrip_check(count($expected) === 503, 'fixture spans the 500-row export page boundary');
 $backup_id = $GLOBALS['knokspack_backup']->create_backup('database');

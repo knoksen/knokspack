@@ -39,6 +39,7 @@ class Knokspack_Test_Json_Response extends RuntimeException {
 
 class Knokspack_Test_Wpdb {
     public $prefix = 'wp_';
+    public $last_error = '';
     public $inserts = array();
     public $insert_id = 0;
     public $updates = array();

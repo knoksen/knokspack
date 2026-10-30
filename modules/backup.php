@@ -71,8 +71,9 @@ class Knokspack_Backup {
         $private_root = (defined('KNOKSPACK_PRIVATE_BACKUP_DIR') === true) ? realpath(KNOKSPACK_PRIVATE_BACKUP_DIR) : false;
         $site_root = realpath(ABSPATH);
         $configured = is_string($this->options['backup_path']) === true ? realpath($this->options['backup_path']) : false;
-        if ($private_root === false || $site_root === false || $configured !== $private_root || ($this->is_within($private_root, $site_root) === true)) {
-            return new WP_Error('private_backup_required', 'Configure an existing private backup directory outside the web root before creating backups.');
+        if ($private_root === false || $site_root === false || $configured !== $private_root
+            || $this->is_within($private_root, $site_root) === true || $this->is_within($site_root, $private_root) === true) {
+            return new WP_Error('private_backup_required', 'Configure an existing private backup directory separate from the WordPress tree before creating backups.');
         }
         if ((class_exists('ZipArchive') === false)) {
             return new WP_Error('zip_required', 'The PHP zip extension is required.');
@@ -175,36 +176,95 @@ class Knokspack_Backup {
 
     private function backup_database($backup_dir) {
         global $wpdb;
-
         $tables = $wpdb->get_results('SHOW TABLES', ARRAY_N);
-        $sql_file = $backup_dir . '/database.sql';
-        $handle = fopen($sql_file, 'w');
-
-        foreach ($tables as $table) {
-            $table_name = $table[0];
-            
-            // Table structure
-            $create_table = $wpdb->get_row("SHOW CREATE TABLE `$table_name`", ARRAY_N);
-            if ((empty($create_table[1]) === true)) {
-                continue;
-            }
-            fwrite($handle, "\n\nDROP TABLE IF EXISTS `$table_name`;\n" . $create_table[1] . ";\n\n");
-
-            // Table data, in pages so large tables do not exhaust memory
-            $offset = 0;
-            do {
-                $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM `$table_name` LIMIT %d OFFSET %d", 500, $offset), ARRAY_A);
-                foreach ($rows as $row) {
-                    $values = array_map(function ($v) use ($wpdb) {
-                        return $v === null ? 'NULL' : "'" . $wpdb->_real_escape($v) . "'";
-                    }, $row);
-                    fwrite($handle, "INSERT INTO `$table_name` VALUES (" . implode(', ', $values) . ");\n");
+        if ($this->backup_query_failed() === true || is_array($tables) === false) throw new Exception('Could not list backup tables');
+        $handle = fopen($backup_dir . '/database.sql', 'w');
+        if ($handle === false) throw new Exception('Could not open database export');
+        try {
+            foreach ($tables as $table) {
+                $quoted = $this->quote_backup_identifier($table[0]);
+                $create = $wpdb->get_row("SHOW CREATE TABLE $quoted", ARRAY_N);
+                if ($this->backup_query_failed() === true || empty($create[1]) === true || strpos($create[1], 'CREATE TABLE ') !== 0) {
+                    throw new Exception('Could not export a supported table definition');
                 }
-                $offset += 500;
-            } while (count($rows) === 500);
+                $columns = $wpdb->get_results("SHOW FULL COLUMNS FROM $quoted", ARRAY_A);
+                if ($this->backup_query_failed() === true || empty($columns) === true) throw new Exception('Could not read backup column metadata');
+                $writable = array();
+                $names = array();
+                $selections = array();
+                foreach ($columns as $column) {
+                    // DEFAULT_GENERATED is writable; virtual/stored expressions are not.
+                    if (preg_match('/\b(?:VIRTUAL|STORED|PERSISTENT)(?:\s+GENERATED)?\b/i', $column['Extra']) === 1) continue;
+                    $identifier = $this->quote_backup_identifier($column['Field']);
+                    $names[] = $identifier;
+                    $kind = preg_match('/\Abit\b/i', $column['Type']) === 1 ? 'bit' :
+                        (preg_match('/\A(?:binary|varbinary|tinyblob|blob|mediumblob|longblob)\b/i', $column['Type']) === 1 ? 'binary' : 'text');
+                    $writable[$column['Field']] = $kind;
+                    // Read bytes through HEX so driver-specific BIT conversion cannot lose information.
+                    $selections[] = $kind === 'text' ? $identifier : "HEX($identifier) AS $identifier";
+                }
+                $list = implode(', ', $names);
+                $selection = implode(', ', $selections);
+                if ($selection === '') $selection = '*';
+                $this->write_backup_sql($handle, "\n\nDROP TABLE IF EXISTS $quoted;\n" . $create[1] . ";\n\n");
+                $offset = 0;
+                do {
+                    $rows = $wpdb->get_results($wpdb->prepare("SELECT $selection FROM $quoted LIMIT %d OFFSET %d", 500, $offset), ARRAY_A);
+                    if ($this->backup_query_failed() === true || is_array($rows) === false) throw new Exception('Could not read backup table data');
+                    foreach ($rows as $row) {
+                        $values = array();
+                        foreach ($writable as $name => $kind) {
+                            if (array_key_exists($name, $row) === false) throw new Exception('Backup row does not match column metadata');
+                            $values[] = $this->encode_backup_value($row[$name], $kind);
+                        }
+                        $this->write_backup_sql($handle, "INSERT INTO $quoted ($list) VALUES (" . implode(', ', $values) . ");\n");
+                    }
+                    $offset += 500;
+                } while (count($rows) === 500);
+            }
+        } finally {
+            if (fclose($handle) === false) throw new Exception('Could not finish database export');
         }
+    }
 
-        fclose($handle);
+    /**
+     * Reads mutable connection state; must not be memoized between SQL queries.
+     * @phpstan-impure
+     */
+    private function backup_query_failed(): bool {
+        global $wpdb;
+        return $wpdb->last_error !== '';
+    }
+
+    private function encode_backup_value($value, $kind) {
+        global $wpdb;
+        if ($value === null) return 'NULL';
+        if ($kind === 'text') return "'" . $wpdb->_real_escape($value) . "'";
+        if (is_string($value) === false || preg_match('/\A[0-9a-f]*\z/i', $value) !== 1) {
+            throw new Exception('Invalid binary export representation');
+        }
+        if ($kind === 'binary') return "X'" . $value . "'";
+        $bits = '';
+        foreach (str_split($value) as $digit) {
+            $bits .= str_pad(decbin(hexdec($digit)), 4, '0', STR_PAD_LEFT);
+        }
+        $bits = ltrim($bits, '0');
+        return "b'" . ($bits === '' ? '0' : $bits) . "'";
+    }
+
+    private function quote_backup_identifier($name) {
+        return '`' . str_replace('`', '``', $name) . '`';
+    }
+
+    /** @param resource $handle */
+    private function write_backup_sql($handle, $sql) {
+        $offset = 0;
+        $length = strlen($sql);
+        while ($offset < $length) {
+            $written = fwrite($handle, substr($sql, $offset));
+            if ($written === false || $written === 0) throw new Exception('Could not write complete database export');
+            $offset += $written;
+        }
     }
 
     private function backup_files($backup_dir) {
